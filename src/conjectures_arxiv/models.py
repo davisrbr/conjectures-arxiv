@@ -16,6 +16,10 @@ class Paper:
     abs_url: str
     pdf_url: str
     source_url: str
+    primary_category: str = ""
+    doi: str = ""
+    journal_ref: str = ""
+    comments: str = ""
     license_url: str = ""
 
 

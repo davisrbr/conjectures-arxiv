@@ -9,6 +9,7 @@ This project ingests recent `math*` arXiv papers, extracts conjecture blocks fro
 - Cleans inactive TeX regions before extraction (`%` comments and `\\iffalse ... \\fi`).
 - Stores papers + conjectures in SQLite.
 - Captures arXiv paper license metadata (`license_url`) from the Atom feed.
+- Captures additional arXiv metadata when available: `primary_category`, `doi`, `journal_ref`, `comments`, `license_url` (with abs-page fallback for license).
 - Runs a GPT-5 Mini second-stage classifier with fields:
 - `label` in `{real_open_conjecture, not_real_conjecture, uncertain}`
 - `interestingness_score` (0..1), plus confidence/rationale

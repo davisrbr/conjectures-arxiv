@@ -18,6 +18,10 @@ def _sample_paper() -> Paper:
         summary="Summary",
         authors=["Alice", "Bob"],
         categories=["math.AG"],
+        primary_category="math.AG",
+        doi="10.1000/example-doi",
+        journal_ref="J. Example Math. 10 (2026), 1-20",
+        comments="15 pages, 3 figures",
         published_at=datetime(2026, 3, 1, 10, 0, 0),
         updated_at=datetime(2026, 3, 1, 10, 0, 0),
         abs_url="https://arxiv.org/abs/2603.00001v1",
@@ -69,11 +73,19 @@ def test_database_insert_dedup_and_export(tmp_path) -> None:
     record = json.loads(lines[0])
     assert record["arxiv_id"] == "2603.00001v1"
     assert record["plain_text"] == "X"
+    assert record["primary_category"] == "math.AG"
+    assert record["doi"] == "10.1000/example-doi"
+    assert record["journal_ref"] == "J. Example Math. 10 (2026), 1-20"
+    assert record["comments"] == "15 pages, 3 figures"
     assert record["license_url"] == "http://creativecommons.org/licenses/by/4.0/"
 
     paper_lines = exported["papers_jsonl"].read_text(encoding="utf-8").strip().splitlines()
     assert len(paper_lines) == 1
     paper_record = json.loads(paper_lines[0])
+    assert paper_record["primary_category"] == "math.AG"
+    assert paper_record["doi"] == "10.1000/example-doi"
+    assert paper_record["journal_ref"] == "J. Example Math. 10 (2026), 1-20"
+    assert paper_record["comments"] == "15 pages, 3 figures"
     assert paper_record["license_url"] == "http://creativecommons.org/licenses/by/4.0/"
 
 
@@ -191,7 +203,7 @@ def test_init_schema_migrates_llm_label_columns(tmp_path) -> None:
     assert "assessment_version" in columns
 
 
-def test_init_schema_migrates_papers_license_column(tmp_path) -> None:
+def test_init_schema_migrates_papers_metadata_columns(tmp_path) -> None:
     db_path = tmp_path / "legacy_papers.sqlite"
     conn = sqlite3.connect(db_path)
     conn.execute(
@@ -219,4 +231,8 @@ def test_init_schema_migrates_papers_license_column(tmp_path) -> None:
     columns = {row[1] for row in db.conn.execute("PRAGMA table_info(papers)").fetchall()}
     db.close()
 
+    assert "primary_category" in columns
+    assert "doi" in columns
+    assert "journal_ref" in columns
+    assert "comments" in columns
     assert "license_url" in columns

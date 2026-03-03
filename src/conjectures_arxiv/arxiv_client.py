@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
+import html
+import re
 import xml.etree.ElementTree as ET
 
 import requests
@@ -15,6 +17,14 @@ ATOM_NS = {
     "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
     "arxiv": "http://arxiv.org/schemas/atom",
 }
+LICENSE_REL_PATTERN = re.compile(
+    r"""<a[^>]*\brel\s*=\s*["'][^"']*\blicense\b[^"']*["'][^>]*\bhref\s*=\s*["'](?P<href>[^"']+)["']""",
+    flags=re.IGNORECASE,
+)
+LICENSE_URL_PATTERN = re.compile(
+    r"""https?://(?:creativecommons\.org/licenses/[^"'<> ]+|arxiv\.org/licenses/[^"'<> ]+)""",
+    flags=re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -67,6 +77,10 @@ class ArxivClient:
                 break
 
             for paper in page.papers:
+                if not paper.license_url:
+                    fallback = self._fetch_license_from_abs(abs_url=paper.abs_url)
+                    if fallback:
+                        paper = replace(paper, license_url=fallback)
                 if max_results is not None and yielded >= max_results:
                     return
                 yield paper
@@ -100,6 +114,10 @@ class ArxivClient:
             for author in entry.findall("atom:author", namespaces=ATOM_NS)
         ]
         categories = [category.attrib.get("term", "") for category in entry.findall("atom:category", namespaces=ATOM_NS)]
+        primary_category = self._extract_primary_category(entry)
+        doi = _normalize_ws(entry.findtext("arxiv:doi", default="", namespaces=ATOM_NS))
+        journal_ref = _normalize_ws(entry.findtext("arxiv:journal_ref", default="", namespaces=ATOM_NS))
+        comments = _normalize_ws(entry.findtext("arxiv:comment", default="", namespaces=ATOM_NS))
 
         published_text = entry.findtext("atom:published", default="", namespaces=ATOM_NS)
         updated_text = entry.findtext("atom:updated", default="", namespaces=ATOM_NS)
@@ -116,6 +134,10 @@ class ArxivClient:
             abs_url=abs_url,
             pdf_url=pdf_url,
             source_url=source_url,
+            primary_category=primary_category,
+            doi=doi,
+            journal_ref=journal_ref,
+            comments=comments,
             license_url=license_url,
         )
 
@@ -134,6 +156,30 @@ class ArxivClient:
             if link_type == "application/pdf" or title == "pdf" or "/pdf/" in href:
                 return href
         return f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+
+    def _extract_primary_category(self, entry: ET.Element) -> str:
+        node = entry.find("arxiv:primary_category", namespaces=ATOM_NS)
+        if node is None:
+            return ""
+        return str(node.attrib.get("term", "")).strip()
+
+    def _fetch_license_from_abs(self, *, abs_url: str) -> str:
+        try:
+            response = self.session.get(abs_url, timeout=60)
+            response.raise_for_status()
+        except requests.RequestException:
+            return ""
+        return self._extract_license_from_abs_html(response.text)
+
+    def _extract_license_from_abs_html(self, html_text: str) -> str:
+        match = LICENSE_REL_PATTERN.search(html_text)
+        if match:
+            return html.unescape(match.group("href")).strip()
+
+        url_match = LICENSE_URL_PATTERN.search(html_text)
+        if url_match:
+            return html.unescape(url_match.group(0)).strip()
+        return ""
 
 
 def _normalize_ws(text: str) -> str:

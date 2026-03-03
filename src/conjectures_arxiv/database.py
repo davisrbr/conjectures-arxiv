@@ -38,6 +38,10 @@ class Database:
                 summary TEXT NOT NULL,
                 authors_json TEXT NOT NULL,
                 categories_json TEXT NOT NULL,
+                primary_category TEXT NOT NULL DEFAULT '',
+                doi TEXT NOT NULL DEFAULT '',
+                journal_ref TEXT NOT NULL DEFAULT '',
+                comments TEXT NOT NULL DEFAULT '',
                 published_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 abs_url TEXT NOT NULL,
@@ -100,6 +104,26 @@ class Database:
         self.conn.commit()
 
     def _ensure_paper_columns(self) -> None:
+        self._ensure_column(
+            table_name="papers",
+            column_name="primary_category",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
+        self._ensure_column(
+            table_name="papers",
+            column_name="doi",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
+        self._ensure_column(
+            table_name="papers",
+            column_name="journal_ref",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
+        self._ensure_column(
+            table_name="papers",
+            column_name="comments",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
         self._ensure_column(
             table_name="papers",
             column_name="license_url",
@@ -193,6 +217,10 @@ class Database:
                 summary,
                 authors_json,
                 categories_json,
+                primary_category,
+                doi,
+                journal_ref,
+                comments,
                 published_at,
                 updated_at,
                 abs_url,
@@ -201,12 +229,16 @@ class Database:
                 license_url,
                 ingested_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(arxiv_id) DO UPDATE SET
                 title = excluded.title,
                 summary = excluded.summary,
                 authors_json = excluded.authors_json,
                 categories_json = excluded.categories_json,
+                primary_category = excluded.primary_category,
+                doi = excluded.doi,
+                journal_ref = excluded.journal_ref,
+                comments = excluded.comments,
                 published_at = excluded.published_at,
                 updated_at = excluded.updated_at,
                 abs_url = excluded.abs_url,
@@ -221,6 +253,10 @@ class Database:
                 paper.summary,
                 json.dumps(paper.authors),
                 json.dumps(paper.categories),
+                paper.primary_category,
+                paper.doi,
+                paper.journal_ref,
+                paper.comments,
                 paper.published_at.strftime(TIMESTAMP_FMT),
                 paper.updated_at.strftime(TIMESTAMP_FMT),
                 paper.abs_url,
@@ -535,6 +571,10 @@ class Database:
                 p.updated_at,
                 p.authors_json,
                 p.categories_json,
+                p.primary_category,
+                p.doi,
+                p.journal_ref,
+                p.comments,
                 p.abs_url,
                 p.pdf_url,
                 p.source_url,
@@ -563,17 +603,21 @@ class Database:
                     "updated_at": row[4],
                     "authors": json.loads(row[5]),
                     "categories": json.loads(row[6]),
-                    "abs_url": row[7],
-                    "pdf_url": row[8],
-                    "source_url": row[9],
-                    "license_url": row[10],
-                    "source_file": row[11],
-                    "index_in_file": row[12],
-                    "start_line": row[13],
-                    "end_line": row[14],
-                    "body_tex": row[15],
-                    "plain_text": row[16],
-                    "content_hash": row[17],
+                    "primary_category": row[7],
+                    "doi": row[8],
+                    "journal_ref": row[9],
+                    "comments": row[10],
+                    "abs_url": row[11],
+                    "pdf_url": row[12],
+                    "source_url": row[13],
+                    "license_url": row[14],
+                    "source_file": row[15],
+                    "index_in_file": row[16],
+                    "start_line": row[17],
+                    "end_line": row[18],
+                    "body_tex": row[19],
+                    "plain_text": row[20],
+                    "content_hash": row[21],
                 }
             )
         return records
@@ -587,6 +631,10 @@ class Database:
                 summary,
                 authors_json,
                 categories_json,
+                primary_category,
+                doi,
+                journal_ref,
+                comments,
                 published_at,
                 updated_at,
                 abs_url,
@@ -608,13 +656,17 @@ class Database:
                     "summary": row[2],
                     "authors": json.loads(row[3]),
                     "categories": json.loads(row[4]),
-                    "published_at": row[5],
-                    "updated_at": row[6],
-                    "abs_url": row[7],
-                    "pdf_url": row[8],
-                    "source_url": row[9],
-                    "license_url": row[10],
-                    "ingested_at": row[11],
+                    "primary_category": row[5],
+                    "doi": row[6],
+                    "journal_ref": row[7],
+                    "comments": row[8],
+                    "published_at": row[9],
+                    "updated_at": row[10],
+                    "abs_url": row[11],
+                    "pdf_url": row[12],
+                    "source_url": row[13],
+                    "license_url": row[14],
+                    "ingested_at": row[15],
                 }
             )
         return records
