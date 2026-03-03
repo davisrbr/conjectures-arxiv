@@ -14,12 +14,17 @@ from .source_fetcher import SourceFetcher, assemble_latex_documents
 
 SECTION_PATTERN = re.compile(r"\\(section|subsection|subsubsection)\*?\{(?P<title>[^{}]+)\}", flags=re.IGNORECASE)
 ALLOWED_LABELS = {"real_open_conjecture", "not_real_conjecture", "uncertain"}
+ASSESSMENT_VERSION = "gpt5mini-v2-interestingness-v1"
 
 
 @dataclass(frozen=True)
 class LLMClassification:
     label: str
     confidence: float
+    interestingness_score: float
+    interestingness_confidence: float
+    interestingness_rationale: str
+    assessment_version: str
     rationale: str
     evidence_snippet: str
     raw_response_json: str
@@ -153,6 +158,10 @@ class GPT5MiniConjectureFilter:
             LLMClassification(
                 label="uncertain",
                 confidence=0.0,
+                interestingness_score=0.0,
+                interestingness_confidence=0.0,
+                interestingness_rationale="",
+                assessment_version=ASSESSMENT_VERSION,
                 rationale="No parsable model output.",
                 evidence_snippet="",
                 raw_response_json="{}",
@@ -177,7 +186,11 @@ class GPT5MiniConjectureFilter:
         for item in items:
             conjecture_id = int(item["conjecture_id"])
             classification = results.get(conjecture_id)
-            if classification is not None and not self._looks_like_parse_artifact(classification):
+            if (
+                classification is not None
+                and not self._looks_like_parse_artifact(classification)
+                and self._has_interestingness(classification)
+            ):
                 continue
 
             recovered = self._classify_single_item(item=item)
@@ -190,6 +203,7 @@ class GPT5MiniConjectureFilter:
 
     def _classify_single_item(self, *, item: dict[str, Any], max_attempts: int = 2) -> LLMClassification | None:
         conjecture_id = int(item["conjecture_id"])
+        last_valid: LLMClassification | None = None
         for _ in range(max_attempts):
             output_text = self._request_model(user_prompt=self._single_user_prompt(item=item))
             entries = self._entries_from_output_text(output_text)
@@ -203,8 +217,10 @@ class GPT5MiniConjectureFilter:
             classification = self._classification_from_payload(entry)
             if self._looks_like_parse_artifact(classification):
                 continue
-            return classification
-        return None
+            if self._has_interestingness(classification):
+                return classification
+            last_valid = classification
+        return last_valid
 
     def _request_model(self, *, user_prompt: str) -> str:
         response = self.client.responses.create(
@@ -308,8 +324,13 @@ class GPT5MiniConjectureFilter:
             "- real_open_conjecture: an actively posed open conjecture in this work or immediate related literature context.\n"
             "- not_real_conjecture: inactive/commented statement, resolved/known/immediate-from-known theorem, or purely historical mention.\n"
             "- uncertain: insufficient context.\n\n"
+            "Interestingness score definition:\n"
+            "- interestingness_score (0..1): estimate of whether this conjecture is meaningfully hard/deep and likely to matter to specialists.\n"
+            "- interestingness_confidence (0..1): confidence in that estimate.\n"
+            "- interestingness_rationale: brief reason tied to local context only.\n\n"
             "Return JSON object with a top-level key 'results' that is a list.\n"
-            "Each list item must have: conjecture_id, label, confidence (0..1), rationale, evidence_snippet.\n\n"
+            "Each list item must have: conjecture_id, label, confidence (0..1), "
+            "interestingness_score (0..1), interestingness_confidence (0..1), interestingness_rationale, rationale, evidence_snippet.\n\n"
             "Keep rationale and evidence_snippet concise (max 40 words each). "
             "Do not include JSON inside rationale or evidence_snippet.\n\n"
             "Few-shot examples:\n"
@@ -329,6 +350,7 @@ class GPT5MiniConjectureFilter:
                     f"### conjecture_id={item['conjecture_id']}\n"
                     f"arXiv ID: {record['arxiv_id']}\n"
                     f"Title: {record['title']}\n"
+                    f"Authors: {', '.join(record.get('authors', []))}\n"
                     f"Abstract: {record['summary']}\n"
                     f"Source file: {record['source_file']}\n"
                     f"Line span: {record['start_line']}-{record['end_line']}\n\n"
@@ -348,10 +370,13 @@ class GPT5MiniConjectureFilter:
         context_window = item["context_window"]
         return (
             "Classify this conjecture and return one JSON object with keys: "
-            "conjecture_id, label, confidence, rationale, evidence_snippet.\n\n"
+            "conjecture_id, label, confidence, interestingness_score, interestingness_confidence, "
+            "interestingness_rationale, rationale, evidence_snippet.\n\n"
+            "All fields are required. Use 0..1 floats for confidence and interestingness fields.\n\n"
             f"conjecture_id={item['conjecture_id']}\n"
             f"arXiv ID: {record['arxiv_id']}\n"
             f"Title: {record['title']}\n"
+            f"Authors: {', '.join(record.get('authors', []))}\n"
             f"Abstract: {record['summary']}\n"
             f"Source file: {record['source_file']}\n"
             f"Line span: {record['start_line']}-{record['end_line']}\n\n"
@@ -375,6 +400,9 @@ class GPT5MiniConjectureFilter:
             label = "uncertain"
 
         confidence = self._clip_confidence(payload.get("confidence", 0.0))
+        interestingness_score = self._clip_confidence(payload.get("interestingness_score", 0.0))
+        interestingness_confidence = self._clip_confidence(payload.get("interestingness_confidence", 0.0))
+        interestingness_rationale = str(payload.get("interestingness_rationale", "")).strip()[:600]
         rationale = str(payload.get("rationale", "")).strip()[:600]
         evidence = str(payload.get("evidence_snippet", "")).strip()[:600]
 
@@ -389,6 +417,10 @@ class GPT5MiniConjectureFilter:
         return LLMClassification(
             label=label,
             confidence=confidence,
+            interestingness_score=interestingness_score,
+            interestingness_confidence=interestingness_confidence,
+            interestingness_rationale=interestingness_rationale,
+            assessment_version=ASSESSMENT_VERSION,
             rationale=rationale,
             evidence_snippet=evidence,
             raw_response_json=json.dumps(payload, ensure_ascii=False),
@@ -423,6 +455,12 @@ class GPT5MiniConjectureFilter:
             return True
         return '"label"' in rationale and "conjecture_id" in rationale
 
+    @staticmethod
+    def _has_interestingness(classification: LLMClassification) -> bool:
+        if classification.interestingness_score > 0 or classification.interestingness_confidence > 0:
+            return True
+        return bool(classification.interestingness_rationale.strip())
+
 
 class LLMFilterRunner:
     def __init__(
@@ -442,7 +480,7 @@ class LLMFilterRunner:
         model: str,
         limit: int | None = None,
         only_unlabeled: bool = True,
-        context_window_lines: int = 12,
+        context_window_lines: int = 20,
         batch_size: int = 1,
         sleep_seconds: float = 0.0,
     ) -> LLMFilterRunSummary:
@@ -490,6 +528,10 @@ class LLMFilterRunner:
                     model=model,
                     label=classification.label,
                     confidence=classification.confidence,
+                    interestingness_score=classification.interestingness_score,
+                    interestingness_confidence=classification.interestingness_confidence,
+                    interestingness_rationale=classification.interestingness_rationale,
+                    assessment_version=classification.assessment_version,
                     rationale=classification.rationale,
                     evidence_snippet=classification.evidence_snippet,
                     raw_response_json=classification.raw_response_json,

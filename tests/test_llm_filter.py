@@ -15,9 +15,10 @@ class FakeResponsesAPI:
         else:
             self.outputs = output_text
         self.calls = 0
+        self.last_kwargs = None
 
     def create(self, **kwargs):
-        del kwargs
+        self.last_kwargs = kwargs
 
         class Resp:
             pass
@@ -85,7 +86,11 @@ def _sample_conjecture_two() -> ExtractedConjecture:
 
 
 def test_gpt5mini_filter_parses_json_response() -> None:
-    client = FakeClient('{"label":"real_open_conjecture","confidence":0.87,"rationale":"open","evidence_snippet":"we conjecture"}')
+    client = FakeClient(
+        '{"label":"real_open_conjecture","confidence":0.87,"interestingness_score":0.79,'
+        '"interestingness_confidence":0.72,"interestingness_rationale":"central open direction",'
+        '"rationale":"open","evidence_snippet":"we conjecture"}'
+    )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
 
     result = filterer.classify(
@@ -104,6 +109,9 @@ def test_gpt5mini_filter_parses_json_response() -> None:
 
     assert result.label == "real_open_conjecture"
     assert result.confidence == 0.87
+    assert result.interestingness_score == 0.79
+    assert result.interestingness_confidence == 0.72
+    assert result.interestingness_rationale == "central open direction"
     assert result.rationale == "open"
 
 
@@ -132,8 +140,10 @@ def test_llm_filter_runner_writes_labels(tmp_path) -> None:
 
 def test_gpt5mini_filter_batch_parses_results() -> None:
     client = FakeClient(
-        '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"rationale":"open","evidence_snippet":"text"},'
-        '{"conjecture_id":12,"label":"uncertain","confidence":0.4,"rationale":"unclear","evidence_snippet":"context"}]}'
+        '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"interestingness_score":0.81,'
+        '"interestingness_confidence":0.66,"interestingness_rationale":"nontrivial and broad","rationale":"open","evidence_snippet":"text"},'
+        '{"conjecture_id":12,"label":"uncertain","confidence":0.4,"interestingness_score":0.33,'
+        '"interestingness_confidence":0.24,"interestingness_rationale":"insufficient detail","rationale":"unclear","evidence_snippet":"context"}]}'
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
     results = filterer.classify_batch(
@@ -143,6 +153,7 @@ def test_gpt5mini_filter_batch_parses_results() -> None:
         ]
     )
     assert results[11].label == "real_open_conjecture"
+    assert results[11].interestingness_score == 0.81
     assert results[12].label == "uncertain"
 
 
@@ -179,8 +190,8 @@ def test_gpt5mini_filter_recovers_nested_json_in_rationale() -> None:
 def test_gpt5mini_filter_retries_missing_batch_ids() -> None:
     client = FakeClient(
         [
-            '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"rationale":"open","evidence_snippet":"text"}]}',
-            '{"conjecture_id":12,"label":"not_real_conjecture","confidence":0.91,"rationale":"resolved","evidence_snippet":"proved"}',
+            '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"interestingness_score":0.7,"interestingness_confidence":0.6,"interestingness_rationale":"nontrivial","rationale":"open","evidence_snippet":"text"}]}',
+            '{"conjecture_id":12,"label":"not_real_conjecture","confidence":0.91,"interestingness_score":0.5,"interestingness_confidence":0.6,"interestingness_rationale":"historical","rationale":"resolved","evidence_snippet":"proved"}',
         ]
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
@@ -221,6 +232,36 @@ def test_gpt5mini_filter_retries_missing_batch_ids() -> None:
     assert client.responses.calls == 2
 
 
+def test_gpt5mini_filter_retries_when_interestingness_missing() -> None:
+    client = FakeClient(
+        [
+            '{"results":[{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"rationale":"open","evidence_snippet":"we conjecture"}]}',
+            '{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"interestingness_score":0.77,"interestingness_confidence":0.7,"interestingness_rationale":"likely technically deep","rationale":"open","evidence_snippet":"we conjecture"}',
+        ]
+    )
+    filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
+    results = filterer.classify_batch(
+        items=[
+            {
+                "conjecture_id": 31,
+                "record": {
+                    "arxiv_id": "a",
+                    "title": "t",
+                    "summary": "s",
+                    "source_file": "f",
+                    "start_line": 1,
+                    "end_line": 1,
+                    "raw_tex": "x",
+                    "plain_text": "x",
+                },
+                "context_window": "ctx",
+            }
+        ]
+    )
+    assert results[31].interestingness_score == 0.77
+    assert client.responses.calls == 2
+
+
 def test_llm_filter_runner_batches(tmp_path) -> None:
     db = Database(tmp_path / "c.sqlite")
     db.init_schema()
@@ -242,3 +283,28 @@ def test_llm_filter_runner_batches(tmp_path) -> None:
     assert summary.label_counts["real_open_conjecture"] == 1
     assert summary.label_counts["not_real_conjecture"] == 1
     db.close()
+
+
+def test_gpt5mini_filter_includes_authors_in_prompt() -> None:
+    client = FakeClient('{"label":"real_open_conjecture","confidence":0.87,"rationale":"open","evidence_snippet":"we conjecture"}')
+    filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
+
+    filterer.classify(
+        record={
+            "arxiv_id": "2603.00002v1",
+            "title": "T",
+            "authors": ["Alice", "Bob"],
+            "summary": "S",
+            "source_file": "main.tex",
+            "start_line": 1,
+            "end_line": 2,
+            "raw_tex": "\\begin{conjecture}X\\end{conjecture}",
+            "plain_text": "X",
+        },
+        context_window="ctx",
+    )
+
+    request = client.responses.last_kwargs
+    assert request is not None
+    user_block = request["input"][1]["content"][0]["text"]
+    assert "Authors: Alice, Bob" in user_block

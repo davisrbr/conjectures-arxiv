@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     filter_parser.add_argument("--model", default="gpt-5-mini")
     filter_parser.add_argument("--limit", type=int, default=None)
     filter_parser.add_argument("--include-labeled", action="store_true")
-    filter_parser.add_argument("--context-window-lines", type=int, default=12)
+    filter_parser.add_argument("--context-window-lines", type=int, default=20)
     filter_parser.add_argument("--batch-size", type=int, default=8)
     filter_parser.add_argument("--sleep-seconds", type=float, default=0.0)
     filter_parser.add_argument("--output-dir", default="data/exports")

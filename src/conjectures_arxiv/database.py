@@ -81,6 +81,10 @@ class Database:
                 model TEXT NOT NULL,
                 label TEXT NOT NULL,
                 confidence REAL NOT NULL,
+                interestingness_score REAL NOT NULL DEFAULT 0.0,
+                interestingness_confidence REAL NOT NULL DEFAULT 0.0,
+                interestingness_rationale TEXT NOT NULL DEFAULT '',
+                assessment_version TEXT NOT NULL DEFAULT '',
                 rationale TEXT NOT NULL,
                 evidence_snippet TEXT NOT NULL,
                 raw_response_json TEXT NOT NULL,
@@ -90,7 +94,37 @@ class Database:
             );
             """
         )
+        self._ensure_llm_label_columns()
         self.conn.commit()
+
+    def _ensure_llm_label_columns(self) -> None:
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="interestingness_score",
+            definition="REAL NOT NULL DEFAULT 0.0",
+        )
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="interestingness_confidence",
+            definition="REAL NOT NULL DEFAULT 0.0",
+        )
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="interestingness_rationale",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="assessment_version",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
+
+    def _ensure_column(self, *, table_name: str, column_name: str, definition: str) -> None:
+        cursor = self.conn.execute(f"PRAGMA table_info({table_name})")
+        existing = {str(row[1]) for row in cursor.fetchall()}
+        if column_name in existing:
+            return
+        self.conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
 
     def start_run(self, from_date: str, to_date: str) -> int:
         cursor = self.conn.execute(
@@ -256,6 +290,7 @@ class Database:
                 c.arxiv_id,
                 p.title,
                 p.summary,
+                p.authors_json,
                 p.source_url,
                 c.source_file,
                 c.start_line,
@@ -291,13 +326,14 @@ class Database:
                     "arxiv_id": row[1],
                     "title": row[2],
                     "summary": row[3],
-                    "source_url": row[4],
-                    "source_file": row[5],
-                    "start_line": row[6],
-                    "end_line": row[7],
-                    "raw_tex": row[8],
-                    "body_tex": row[9],
-                    "plain_text": row[10],
+                    "authors": json.loads(row[4]),
+                    "source_url": row[5],
+                    "source_file": row[6],
+                    "start_line": row[7],
+                    "end_line": row[8],
+                    "raw_tex": row[9],
+                    "body_tex": row[10],
+                    "plain_text": row[11],
                 }
             )
         return records
@@ -312,6 +348,10 @@ class Database:
         rationale: str,
         evidence_snippet: str,
         raw_response_json: str,
+        interestingness_score: float = 0.0,
+        interestingness_confidence: float = 0.0,
+        interestingness_rationale: str = "",
+        assessment_version: str = "",
     ) -> None:
         self.conn.execute(
             """
@@ -320,15 +360,23 @@ class Database:
                 model,
                 label,
                 confidence,
+                interestingness_score,
+                interestingness_confidence,
+                interestingness_rationale,
+                assessment_version,
                 rationale,
                 evidence_snippet,
                 raw_response_json,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(conjecture_id, model) DO UPDATE SET
                 label = excluded.label,
                 confidence = excluded.confidence,
+                interestingness_score = excluded.interestingness_score,
+                interestingness_confidence = excluded.interestingness_confidence,
+                interestingness_rationale = excluded.interestingness_rationale,
+                assessment_version = excluded.assessment_version,
                 rationale = excluded.rationale,
                 evidence_snippet = excluded.evidence_snippet,
                 raw_response_json = excluded.raw_response_json,
@@ -339,6 +387,10 @@ class Database:
                 model,
                 label,
                 confidence,
+                interestingness_score,
+                interestingness_confidence,
+                interestingness_rationale,
+                assessment_version,
                 rationale,
                 evidence_snippet,
                 raw_response_json,
@@ -388,6 +440,10 @@ class Database:
                 c.plain_text,
                 l.label,
                 l.confidence,
+                l.interestingness_score,
+                l.interestingness_confidence,
+                l.interestingness_rationale,
+                l.assessment_version,
                 l.rationale,
                 l.evidence_snippet,
                 l.created_at
@@ -419,9 +475,13 @@ class Database:
                     "plain_text": row[10],
                     "label": row[11],
                     "confidence": row[12],
-                    "rationale": row[13],
-                    "evidence_snippet": row[14],
-                    "labeled_at": row[15],
+                    "interestingness_score": row[13],
+                    "interestingness_confidence": row[14],
+                    "interestingness_rationale": row[15],
+                    "assessment_version": row[16],
+                    "rationale": row[17],
+                    "evidence_snippet": row[18],
+                    "labeled_at": row[19],
                 }
             )
 

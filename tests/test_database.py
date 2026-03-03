@@ -2,6 +2,7 @@ import builtins
 from datetime import datetime
 import json
 import sys
+import sqlite3
 
 import pytest
 
@@ -122,6 +123,10 @@ def test_llm_label_roundtrip_and_exports(tmp_path) -> None:
         model="gpt-5-mini",
         label="real_open_conjecture",
         confidence=0.92,
+        interestingness_score=0.84,
+        interestingness_confidence=0.75,
+        interestingness_rationale="Touches multiple deep tools.",
+        assessment_version="test-v1",
         rationale="Actively posed as open.",
         evidence_snippet="We conjecture...",
         raw_response_json='{"label":"real_open_conjecture"}',
@@ -140,4 +145,40 @@ def test_llm_label_roundtrip_and_exports(tmp_path) -> None:
     )
     assert exported["real_conjectures_jsonl"].exists()
     assert exported["real_conjectures_csv"].exists()
+    row = json.loads(exported["real_conjectures_jsonl"].read_text(encoding="utf-8").strip())
+    assert row["interestingness_score"] == 0.84
+    assert row["assessment_version"] == "test-v1"
     db.close()
+
+
+def test_init_schema_migrates_llm_label_columns(tmp_path) -> None:
+    db_path = tmp_path / "legacy.sqlite"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE conjecture_llm_labels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conjecture_id INTEGER NOT NULL,
+            model TEXT NOT NULL,
+            label TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            rationale TEXT NOT NULL,
+            evidence_snippet TEXT NOT NULL,
+            raw_response_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(conjecture_id, model)
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    db = Database(db_path)
+    db.init_schema()
+    columns = {row[1] for row in db.conn.execute("PRAGMA table_info(conjecture_llm_labels)").fetchall()}
+    db.close()
+
+    assert "interestingness_score" in columns
+    assert "interestingness_confidence" in columns
+    assert "interestingness_rationale" in columns
+    assert "assessment_version" in columns
