@@ -10,7 +10,11 @@ from .models import Paper
 
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
-ATOM_NS = {"atom": "http://www.w3.org/2005/Atom", "opensearch": "http://a9.com/-/spec/opensearch/1.1/"}
+ATOM_NS = {
+    "atom": "http://www.w3.org/2005/Atom",
+    "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
+    "arxiv": "http://arxiv.org/schemas/atom",
+}
 
 
 @dataclass(frozen=True)
@@ -99,6 +103,7 @@ class ArxivClient:
 
         published_text = entry.findtext("atom:published", default="", namespaces=ATOM_NS)
         updated_text = entry.findtext("atom:updated", default="", namespaces=ATOM_NS)
+        license_url = entry.findtext("arxiv:license", default="", namespaces=ATOM_NS).strip()
 
         return Paper(
             arxiv_id=arxiv_id,
@@ -111,6 +116,7 @@ class ArxivClient:
             abs_url=abs_url,
             pdf_url=pdf_url,
             source_url=source_url,
+            license_url=license_url,
         )
 
     @staticmethod

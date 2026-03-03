@@ -8,9 +8,11 @@ This project ingests recent `math*` arXiv papers, extracts conjecture blocks fro
 - Downloads source (`/e-print/{id}`), resolves `\\input`/`\\include`, and extracts conjecture-like environments.
 - Cleans inactive TeX regions before extraction (`%` comments and `\\iffalse ... \\fi`).
 - Stores papers + conjectures in SQLite.
+- Captures arXiv paper license metadata (`license_url`) from the Atom feed.
 - Runs a GPT-5 Mini second-stage classifier with fields:
 - `label` in `{real_open_conjecture, not_real_conjecture, uncertain}`
 - `interestingness_score` (0..1), plus confidence/rationale
+- Interestingness is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
 - Model context includes paper title, authors, abstract, conjecture text, and local source window (default `±20` lines).
 - Retries malformed batch responses per item to avoid parser-artifact labels.
 - Exports JSONL/CSV and uploads to S3.

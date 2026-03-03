@@ -155,6 +155,7 @@ def test_gpt5mini_filter_batch_parses_results() -> None:
     assert results[11].label == "real_open_conjecture"
     assert results[11].interestingness_score == 0.81
     assert results[12].label == "uncertain"
+    assert results[12].interestingness_score == 0.0
 
 
 def test_gpt5mini_filter_recovers_nested_json_in_rationale() -> None:
@@ -190,8 +191,9 @@ def test_gpt5mini_filter_recovers_nested_json_in_rationale() -> None:
 def test_gpt5mini_filter_retries_missing_batch_ids() -> None:
     client = FakeClient(
         [
-            '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"interestingness_score":0.7,"interestingness_confidence":0.6,"interestingness_rationale":"nontrivial","rationale":"open","evidence_snippet":"text"}]}',
-            '{"conjecture_id":12,"label":"not_real_conjecture","confidence":0.91,"interestingness_score":0.5,"interestingness_confidence":0.6,"interestingness_rationale":"historical","rationale":"resolved","evidence_snippet":"proved"}',
+            '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"rationale":"open","evidence_snippet":"text"}]}',
+            '{"conjecture_id":12,"label":"not_real_conjecture","confidence":0.91,"rationale":"resolved","evidence_snippet":"proved"}',
+            '{"conjecture_id":11,"interestingness_score":0.77,"interestingness_confidence":0.71,"interestingness_rationale":"deep conjectural structure"}',
         ]
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
@@ -229,14 +231,16 @@ def test_gpt5mini_filter_retries_missing_batch_ids() -> None:
     )
     assert results[11].label == "real_open_conjecture"
     assert results[12].label == "not_real_conjecture"
-    assert client.responses.calls == 2
+    assert results[11].interestingness_score == 0.77
+    assert client.responses.calls == 3
 
 
-def test_gpt5mini_filter_retries_when_interestingness_missing() -> None:
+def test_gpt5mini_filter_scores_interestingness_only_for_real_open() -> None:
     client = FakeClient(
         [
-            '{"results":[{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"rationale":"open","evidence_snippet":"we conjecture"}]}',
-            '{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"interestingness_score":0.77,"interestingness_confidence":0.7,"interestingness_rationale":"likely technically deep","rationale":"open","evidence_snippet":"we conjecture"}',
+            '{"results":[{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"rationale":"open","evidence_snippet":"we conjecture"},'
+            '{"conjecture_id":32,"label":"not_real_conjecture","confidence":0.96,"rationale":"resolved","evidence_snippet":"proved"}]}',
+            '{"conjecture_id":31,"interestingness_score":0.77,"interestingness_confidence":0.7,"interestingness_rationale":"likely technically deep"}',
         ]
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
@@ -255,10 +259,25 @@ def test_gpt5mini_filter_retries_when_interestingness_missing() -> None:
                     "plain_text": "x",
                 },
                 "context_window": "ctx",
-            }
+            },
+            {
+                "conjecture_id": 32,
+                "record": {
+                    "arxiv_id": "b",
+                    "title": "t",
+                    "summary": "s",
+                    "source_file": "f",
+                    "start_line": 1,
+                    "end_line": 1,
+                    "raw_tex": "y",
+                    "plain_text": "y",
+                },
+                "context_window": "ctx",
+            },
         ]
     )
     assert results[31].interestingness_score == 0.77
+    assert results[32].interestingness_score == 0.0
     assert client.responses.calls == 2
 
 

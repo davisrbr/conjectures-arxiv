@@ -151,28 +151,17 @@ class GPT5MiniConjectureFilter:
             "record": record,
             "context_window": context_window,
         }
-        result = self._classify_single_item(item=item)
-        if result is not None:
-            return result
-        return (
-            LLMClassification(
-                label="uncertain",
-                confidence=0.0,
-                interestingness_score=0.0,
-                interestingness_confidence=0.0,
-                interestingness_rationale="",
-                assessment_version=ASSESSMENT_VERSION,
-                rationale="No parsable model output.",
-                evidence_snippet="",
-                raw_response_json="{}",
-            )
-        )
+        results = self.classify_batch(items=[item])
+        return results.get(conjecture_id, self._empty_uncertain())
 
     def classify_batch(self, *, items: list[dict[str, Any]]) -> dict[int, LLMClassification]:
         if not items:
             return {}
 
-        output_text = self._request_model(user_prompt=self._batch_user_prompt(items=items))
+        output_text = self._request_model(
+            system_prompt=self._label_system_prompt(),
+            user_prompt=self._batch_user_prompt(items=items),
+        )
         entries = self._entries_from_output_text(output_text)
 
         results: dict[int, LLMClassification] = {}
@@ -186,26 +175,39 @@ class GPT5MiniConjectureFilter:
         for item in items:
             conjecture_id = int(item["conjecture_id"])
             classification = results.get(conjecture_id)
-            if (
-                classification is not None
-                and not self._looks_like_parse_artifact(classification)
-                and self._has_interestingness(classification)
-            ):
+            if classification is not None and not self._looks_like_parse_artifact(classification):
                 continue
 
-            recovered = self._classify_single_item(item=item)
+            recovered = self._classify_single_label_item(item=item)
             if recovered is None:
                 results.pop(conjecture_id, None)
                 continue
             results[conjecture_id] = recovered
 
+        # Score interestingness only for real/open conjectures.
+        for item in items:
+            conjecture_id = int(item["conjecture_id"])
+            classification = results.get(conjecture_id)
+            if classification is None:
+                continue
+            if classification.label != "real_open_conjecture":
+                results[conjecture_id] = self._without_interestingness(classification)
+                continue
+
+            scored = self._score_interestingness(item=item, base=classification)
+            if scored is None:
+                continue
+            results[conjecture_id] = scored
+
         return results
 
-    def _classify_single_item(self, *, item: dict[str, Any], max_attempts: int = 2) -> LLMClassification | None:
+    def _classify_single_label_item(self, *, item: dict[str, Any], max_attempts: int = 2) -> LLMClassification | None:
         conjecture_id = int(item["conjecture_id"])
-        last_valid: LLMClassification | None = None
         for _ in range(max_attempts):
-            output_text = self._request_model(user_prompt=self._single_user_prompt(item=item))
+            output_text = self._request_model(
+                system_prompt=self._label_system_prompt(),
+                user_prompt=self._single_user_prompt(item=item),
+            )
             entries = self._entries_from_output_text(output_text)
             if not entries:
                 continue
@@ -217,16 +219,51 @@ class GPT5MiniConjectureFilter:
             classification = self._classification_from_payload(entry)
             if self._looks_like_parse_artifact(classification):
                 continue
-            if self._has_interestingness(classification):
-                return classification
-            last_valid = classification
-        return last_valid
+            return classification
+        return None
 
-    def _request_model(self, *, user_prompt: str) -> str:
+    def _score_interestingness(self, *, item: dict[str, Any], base: LLMClassification, max_attempts: int = 2) -> LLMClassification | None:
+        conjecture_id = int(item["conjecture_id"])
+        for _ in range(max_attempts):
+            output_text = self._request_model(
+                system_prompt=self._interestingness_system_prompt(),
+                user_prompt=self._interestingness_user_prompt(item=item),
+            )
+            entries = self._entries_from_output_text(output_text)
+            if entries:
+                payload = self._find_entry_for_id(entries=entries, conjecture_id=conjecture_id) or entries[0]
+            else:
+                parsed = self._parse_any_json(output_text)
+                payload = parsed if isinstance(parsed, dict) else None
+
+            if payload is None or not self._has_interestingness_payload(payload):
+                continue
+
+            score = self._clip_confidence(payload.get("interestingness_score", 0.0))
+            confidence = self._clip_confidence(payload.get("interestingness_confidence", 0.0))
+            rationale = str(payload.get("interestingness_rationale", "")).strip()[:600]
+            raw_json = self._merge_raw_responses(
+                label_raw=base.raw_response_json,
+                interestingness_payload=payload,
+            )
+            return LLMClassification(
+                label=base.label,
+                confidence=base.confidence,
+                interestingness_score=score,
+                interestingness_confidence=confidence,
+                interestingness_rationale=rationale,
+                assessment_version=ASSESSMENT_VERSION,
+                rationale=base.rationale,
+                evidence_snippet=base.evidence_snippet,
+                raw_response_json=raw_json,
+            )
+        return None
+
+    def _request_model(self, *, system_prompt: str, user_prompt: str) -> str:
         response = self.client.responses.create(
             model=self.model,
             input=[
-                {"role": "system", "content": [{"type": "input_text", "text": self._system_prompt()}]},
+                {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
                 {"role": "user", "content": [{"type": "input_text", "text": user_prompt}]},
             ],
         )
@@ -316,7 +353,7 @@ class GPT5MiniConjectureFilter:
         return max(0.0, min(1.0, numeric))
 
     @staticmethod
-    def _system_prompt() -> str:
+    def _label_system_prompt() -> str:
         return (
             "You classify whether a LaTeX conjecture block is a real, currently-open conjecture in this paper. "
             "Respond with JSON only.\n\n"
@@ -324,19 +361,27 @@ class GPT5MiniConjectureFilter:
             "- real_open_conjecture: an actively posed open conjecture in this work or immediate related literature context.\n"
             "- not_real_conjecture: inactive/commented statement, resolved/known/immediate-from-known theorem, or purely historical mention.\n"
             "- uncertain: insufficient context.\n\n"
-            "Interestingness score definition:\n"
-            "- interestingness_score (0..1): estimate of whether this conjecture is meaningfully hard/deep and likely to matter to specialists.\n"
-            "- interestingness_confidence (0..1): confidence in that estimate.\n"
-            "- interestingness_rationale: brief reason tied to local context only.\n\n"
             "Return JSON object with a top-level key 'results' that is a list.\n"
-            "Each list item must have: conjecture_id, label, confidence (0..1), "
-            "interestingness_score (0..1), interestingness_confidence (0..1), interestingness_rationale, rationale, evidence_snippet.\n\n"
+            "Each list item must have: conjecture_id, label, confidence (0..1), rationale, evidence_snippet.\n\n"
             "Keep rationale and evidence_snippet concise (max 40 words each). "
             "Do not include JSON inside rationale or evidence_snippet.\n\n"
             "Few-shot examples:\n"
             "Example 1 (not real): conjecture appears inside \\iffalse...\\fi or fully commented with % lines.\n"
             "Example 2 (not real): text says the conjecture follows immediately from Four Color Theorem.\n"
             "Example 3 (real): 'A minimally nonperfectly divisible graph contains no clique cutset.' presented as an open conjecture and investigated in paper."
+        )
+
+    @staticmethod
+    def _interestingness_system_prompt() -> str:
+        return (
+            "You rate interestingness for conjectures already classified as currently-open. "
+            "Respond with JSON only.\n\n"
+            "Define interestingness_score (0..1) as likelihood the conjecture is meaningfully difficult/deep "
+            "and likely important to specialists if solved.\n"
+            "Define interestingness_confidence (0..1) as confidence in the estimate.\n"
+            "interestingness_rationale should be concise (max 40 words) and grounded in provided local context.\n\n"
+            "Do not output a label. Do not include nested JSON in text fields.\n"
+            "Return one JSON object with keys: conjecture_id, interestingness_score, interestingness_confidence, interestingness_rationale."
         )
 
     @staticmethod
@@ -370,9 +415,27 @@ class GPT5MiniConjectureFilter:
         context_window = item["context_window"]
         return (
             "Classify this conjecture and return one JSON object with keys: "
-            "conjecture_id, label, confidence, interestingness_score, interestingness_confidence, "
-            "interestingness_rationale, rationale, evidence_snippet.\n\n"
-            "All fields are required. Use 0..1 floats for confidence and interestingness fields.\n\n"
+            "conjecture_id, label, confidence, rationale, evidence_snippet.\n\n"
+            "All fields are required. Use a 0..1 float for confidence.\n\n"
+            f"conjecture_id={item['conjecture_id']}\n"
+            f"arXiv ID: {record['arxiv_id']}\n"
+            f"Title: {record['title']}\n"
+            f"Authors: {', '.join(record.get('authors', []))}\n"
+            f"Abstract: {record['summary']}\n"
+            f"Source file: {record['source_file']}\n"
+            f"Line span: {record['start_line']}-{record['end_line']}\n\n"
+            f"Conjecture raw TeX:\n{record['raw_tex']}\n\n"
+            f"Conjecture body (normalized):\n{record['plain_text']}\n\n"
+            f"Local source context:\n{context_window}\n"
+        )
+
+    @staticmethod
+    def _interestingness_user_prompt(*, item: dict[str, Any]) -> str:
+        record = item["record"]
+        context_window = item["context_window"]
+        return (
+            "Rate interestingness for this open conjecture and return one JSON object with keys: "
+            "conjecture_id, interestingness_score, interestingness_confidence, interestingness_rationale.\n\n"
             f"conjecture_id={item['conjecture_id']}\n"
             f"arXiv ID: {record['arxiv_id']}\n"
             f"Title: {record['title']}\n"
@@ -427,6 +490,55 @@ class GPT5MiniConjectureFilter:
         )
 
     @staticmethod
+    def _has_interestingness_payload(payload: dict[str, Any]) -> bool:
+        return any(
+            key in payload
+            for key in ("interestingness_score", "interestingness_confidence", "interestingness_rationale")
+        )
+
+    @staticmethod
+    def _merge_raw_responses(*, label_raw: str, interestingness_payload: dict[str, Any]) -> str:
+        try:
+            label_payload: Any = json.loads(label_raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            label_payload = label_raw
+        return json.dumps(
+            {
+                "label_response": label_payload,
+                "interestingness_response": interestingness_payload,
+            },
+            ensure_ascii=False,
+        )
+
+    @staticmethod
+    def _empty_uncertain() -> LLMClassification:
+        return LLMClassification(
+            label="uncertain",
+            confidence=0.0,
+            interestingness_score=0.0,
+            interestingness_confidence=0.0,
+            interestingness_rationale="",
+            assessment_version=ASSESSMENT_VERSION,
+            rationale="No parsable model output.",
+            evidence_snippet="",
+            raw_response_json="{}",
+        )
+
+    @staticmethod
+    def _without_interestingness(classification: LLMClassification) -> LLMClassification:
+        return LLMClassification(
+            label=classification.label,
+            confidence=classification.confidence,
+            interestingness_score=0.0,
+            interestingness_confidence=0.0,
+            interestingness_rationale="",
+            assessment_version=ASSESSMENT_VERSION,
+            rationale=classification.rationale,
+            evidence_snippet=classification.evidence_snippet,
+            raw_response_json=classification.raw_response_json,
+        )
+
+    @staticmethod
     def _looks_like_embedded_json(value: str) -> bool:
         stripped = value.strip()
         if not stripped:
@@ -454,13 +566,6 @@ class GPT5MiniConjectureFilter:
         if rationale.startswith("{") or rationale.startswith("["):
             return True
         return '"label"' in rationale and "conjecture_id" in rationale
-
-    @staticmethod
-    def _has_interestingness(classification: LLMClassification) -> bool:
-        if classification.interestingness_score > 0 or classification.interestingness_confidence > 0:
-            return True
-        return bool(classification.interestingness_rationale.strip())
-
 
 class LLMFilterRunner:
     def __init__(

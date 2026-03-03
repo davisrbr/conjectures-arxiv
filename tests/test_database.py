@@ -23,6 +23,7 @@ def _sample_paper() -> Paper:
         abs_url="https://arxiv.org/abs/2603.00001v1",
         pdf_url="https://arxiv.org/pdf/2603.00001v1.pdf",
         source_url="https://arxiv.org/e-print/2603.00001v1",
+        license_url="http://creativecommons.org/licenses/by/4.0/",
     )
 
 
@@ -68,6 +69,12 @@ def test_database_insert_dedup_and_export(tmp_path) -> None:
     record = json.loads(lines[0])
     assert record["arxiv_id"] == "2603.00001v1"
     assert record["plain_text"] == "X"
+    assert record["license_url"] == "http://creativecommons.org/licenses/by/4.0/"
+
+    paper_lines = exported["papers_jsonl"].read_text(encoding="utf-8").strip().splitlines()
+    assert len(paper_lines) == 1
+    paper_record = json.loads(paper_lines[0])
+    assert paper_record["license_url"] == "http://creativecommons.org/licenses/by/4.0/"
 
 
 def test_with_partitions_adds_year_month_fields() -> None:
@@ -182,3 +189,34 @@ def test_init_schema_migrates_llm_label_columns(tmp_path) -> None:
     assert "interestingness_confidence" in columns
     assert "interestingness_rationale" in columns
     assert "assessment_version" in columns
+
+
+def test_init_schema_migrates_papers_license_column(tmp_path) -> None:
+    db_path = tmp_path / "legacy_papers.sqlite"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE papers (
+            arxiv_id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            authors_json TEXT NOT NULL,
+            categories_json TEXT NOT NULL,
+            published_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            abs_url TEXT NOT NULL,
+            pdf_url TEXT NOT NULL,
+            source_url TEXT NOT NULL,
+            ingested_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    db = Database(db_path)
+    db.init_schema()
+    columns = {row[1] for row in db.conn.execute("PRAGMA table_info(papers)").fetchall()}
+    db.close()
+
+    assert "license_url" in columns

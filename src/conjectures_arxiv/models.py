@@ -16,6 +16,7 @@ class Paper:
     abs_url: str
     pdf_url: str
     source_url: str
+    license_url: str = ""
 
 
 @dataclass(frozen=True)

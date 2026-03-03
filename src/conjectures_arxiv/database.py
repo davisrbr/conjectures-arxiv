@@ -43,6 +43,7 @@ class Database:
                 abs_url TEXT NOT NULL,
                 pdf_url TEXT NOT NULL,
                 source_url TEXT NOT NULL,
+                license_url TEXT NOT NULL DEFAULT '',
                 ingested_at TEXT NOT NULL
             );
 
@@ -94,8 +95,16 @@ class Database:
             );
             """
         )
+        self._ensure_paper_columns()
         self._ensure_llm_label_columns()
         self.conn.commit()
+
+    def _ensure_paper_columns(self) -> None:
+        self._ensure_column(
+            table_name="papers",
+            column_name="license_url",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
 
     def _ensure_llm_label_columns(self) -> None:
         self._ensure_column(
@@ -189,9 +198,10 @@ class Database:
                 abs_url,
                 pdf_url,
                 source_url,
+                license_url,
                 ingested_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(arxiv_id) DO UPDATE SET
                 title = excluded.title,
                 summary = excluded.summary,
@@ -202,6 +212,7 @@ class Database:
                 abs_url = excluded.abs_url,
                 pdf_url = excluded.pdf_url,
                 source_url = excluded.source_url,
+                license_url = excluded.license_url,
                 ingested_at = excluded.ingested_at
             """,
             (
@@ -215,6 +226,7 @@ class Database:
                 paper.abs_url,
                 paper.pdf_url,
                 paper.source_url,
+                paper.license_url,
                 utc_now_str(),
             ),
         )
@@ -526,6 +538,7 @@ class Database:
                 p.abs_url,
                 p.pdf_url,
                 p.source_url,
+                p.license_url,
                 c.source_file,
                 c.index_in_file,
                 c.start_line,
@@ -553,13 +566,14 @@ class Database:
                     "abs_url": row[7],
                     "pdf_url": row[8],
                     "source_url": row[9],
-                    "source_file": row[10],
-                    "index_in_file": row[11],
-                    "start_line": row[12],
-                    "end_line": row[13],
-                    "body_tex": row[14],
-                    "plain_text": row[15],
-                    "content_hash": row[16],
+                    "license_url": row[10],
+                    "source_file": row[11],
+                    "index_in_file": row[12],
+                    "start_line": row[13],
+                    "end_line": row[14],
+                    "body_tex": row[15],
+                    "plain_text": row[16],
+                    "content_hash": row[17],
                 }
             )
         return records
@@ -578,6 +592,7 @@ class Database:
                 abs_url,
                 pdf_url,
                 source_url,
+                license_url,
                 ingested_at
             FROM papers
             ORDER BY published_at DESC
@@ -598,7 +613,8 @@ class Database:
                     "abs_url": row[7],
                     "pdf_url": row[8],
                     "source_url": row[9],
-                    "ingested_at": row[10],
+                    "license_url": row[10],
+                    "ingested_at": row[11],
                 }
             )
         return records
