@@ -24,9 +24,10 @@ This repository ingests recent arXiv math papers, extracts LaTeX conjecture envi
 ## Quick start
 
 ```bash
+python --version  # requires Python 3.10+
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .[dev]
+pip install -e '.[dev]'
 ```
 
 Initialize the database:
@@ -53,8 +54,8 @@ Upload DB + exports to S3:
 conjectures-arxiv upload-s3 \
   --db-path data/conjectures.sqlite \
   --exports-dir data/exports \
-  --bucket your-bucket \
-  --prefix conjectures-arxiv \
+  --bucket conjectures-arxiv-math-067542072602 \
+  --prefix math-conjectures \
   --create-bucket \
   --region us-east-1
 ```
@@ -71,6 +72,40 @@ S3 layout:
 
 - `s3://<bucket>/<prefix>/runs/<timestamp>/...`: immutable run snapshots.
 - `s3://<bucket>/<prefix>/latest/...`: most recent artifacts for collaborators.
+
+## Shared S3 dataset
+
+- Bucket: `conjectures-arxiv-math-067542072602`
+- Prefix: `math-conjectures`
+- Latest path: `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/`
+Latest files:
+- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures_week_live_20260303.sqlite`
+- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures.jsonl`
+- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures.csv`
+- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/papers.jsonl`
+
+## Requesting S3 access
+
+Send this info to the dataset maintainer when requesting access:
+
+- Your AWS account ID.
+- The IAM principal ARN that should get access (user or role).
+- Requested access level (`read-only` recommended for most collaborators).
+- Requested scope (`latest/*` only, or also `runs/*` history).
+- Optional expiration date for temporary access.
+
+Recommended default collaborator permissions:
+
+- `s3:ListBucket` on bucket `conjectures-arxiv-math-067542072602`.
+- `s3:GetObject` on `math-conjectures/latest/*`.
+- Optional `s3:GetObject` on `math-conjectures/runs/*` for historical snapshots.
+
+Quick access check once permissions are granted:
+
+```bash
+aws s3 ls s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/
+aws s3 cp s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures.jsonl - | head
+```
 
 ## Notes on coverage
 
