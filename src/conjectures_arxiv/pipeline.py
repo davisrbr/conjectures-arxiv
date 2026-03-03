@@ -8,7 +8,7 @@ import time
 from .arxiv_client import ArxivClient
 from .conjecture_extractor import extract_conjectures_from_documents
 from .database import Database
-from .source_fetcher import SourceFetcher
+from .source_fetcher import SourceFetcher, assemble_latex_documents
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,9 @@ class IngestionPipeline:
 
                 try:
                     documents = self.source_fetcher.fetch_documents(paper.source_url)
-                    extracted = extract_conjectures_from_documents(documents)
+                    assembled = assemble_latex_documents(documents)
+                    extraction_docs = assembled or documents
+                    extracted = extract_conjectures_from_documents(extraction_docs)
                     inserted = self.db.insert_conjectures(paper.arxiv_id, extracted)
                     conjectures_stored += inserted
                 except Exception as exc:  # noqa: BLE001

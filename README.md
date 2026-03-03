@@ -1,117 +1,109 @@
 # Conjectures from Recent arXiv Math Papers
 
-This repository ingests recent arXiv math papers, extracts LaTeX conjecture environments, and stores/share results.
+This project ingests recent `math*` arXiv papers, extracts conjecture blocks from LaTeX source, and publishes a shareable dataset.
 
-## What it does
+## What It Does
 
-- Queries arXiv for papers in `cat:math*` over a date range (default: past week).
-- Downloads each paper source from `/e-print/{id}`.
-- Extracts LaTeX blocks of the form `\\begin{conjecture}` ... `\\end{conjecture}` (including starred variants).
-- Stores normalized paper metadata + conjectures in SQLite.
-- Exports JSONL/CSV snapshots.
-- Uploads DB + exports to S3 for collaboration.
+- Queries arXiv by date range (default: past 7 days).
+- Downloads source (`/e-print/{id}`), resolves `\\input`/`\\include`, and extracts conjecture-like environments.
+- Cleans inactive TeX regions before extraction (`%` comments and `\\iffalse ... \\fi`).
+- Stores papers + conjectures in SQLite.
+- Runs a GPT-5 Mini second-stage classifier:
+- `real_open_conjecture`
+- `not_real_conjecture`
+- `uncertain`
+- Retries malformed batch responses per item to avoid parser-artifact labels.
+- Exports JSONL/CSV and uploads to S3.
 
-## Project structure
-
-- `src/conjectures_arxiv/arxiv_client.py`: arXiv API querying and Atom parsing.
-- `src/conjectures_arxiv/source_fetcher.py`: source download and tar/gzip/plain TeX extraction.
-- `src/conjectures_arxiv/conjecture_extractor.py`: conjecture block extraction and normalization.
-- `src/conjectures_arxiv/database.py`: SQLite schema and persistence.
-- `src/conjectures_arxiv/pipeline.py`: ingestion orchestration.
-- `src/conjectures_arxiv/s3_publish.py`: S3 publishing.
-- `src/conjectures_arxiv/cli.py`: command-line interface.
-
-## Quick start
+## Quick Start
 
 ```bash
-python --version  # requires Python 3.10+
 python -m venv .venv
 source .venv/bin/activate
-pip install -e '.[dev]'
+pip install -e '.[dev,llm]'
 ```
 
-Initialize the database:
+Initialize DB:
 
 ```bash
 conjectures-arxiv init-db --db-path data/conjectures.sqlite
 ```
 
-Ingest past-week papers:
+Ingest the past week:
 
 ```bash
-conjectures-arxiv ingest-week --db-path data/conjectures.sqlite --days 7
+conjectures-arxiv ingest-week --db-path data/conjectures.sqlite --days 7 --output-dir data/exports
 ```
 
-Export current records:
+Run GPT-5 Mini filtering:
 
 ```bash
-conjectures-arxiv export --db-path data/conjectures.sqlite --output-dir data/exports
+export OPENAI_API_KEY=...
+conjectures-arxiv filter-llm \
+  --db-path data/conjectures.sqlite \
+  --model gpt-5-mini \
+  --batch-size 8 \
+  --export-real \
+  --output-dir data/exports \
+  --min-confidence 0.7
 ```
 
-Upload DB + exports to S3:
+Upload to S3:
 
 ```bash
 conjectures-arxiv upload-s3 \
   --db-path data/conjectures.sqlite \
   --exports-dir data/exports \
   --bucket conjectures-arxiv-math-067542072602 \
-  --prefix math-conjectures \
-  --create-bucket \
-  --region us-east-1
+  --prefix math-conjectures
 ```
 
-## Data model
+## Canonical Snapshot (Current)
 
-SQLite tables:
+Local canonical dataset:
 
-- `papers`: one row per arXiv paper.
-- `conjectures`: one row per extracted conjecture block, deduplicated by `(arxiv_id, content_hash)`.
-- `ingestion_runs`: tracking and metrics for each ingestion execution.
+- `data/conjectures_week_canonical_20260303.sqlite`
+- `data/exports_week_canonical_20260303/conjectures.jsonl`
+- `data/exports_week_canonical_20260303/conjectures.csv`
+- `data/exports_week_canonical_20260303/papers.jsonl`
+- `data/exports_week_canonical_20260303/real_conjectures_gpt-5-mini.jsonl`
+- `data/exports_week_canonical_20260303/real_conjectures_gpt-5-mini.csv`
 
-S3 layout:
+Current totals:
 
-- `s3://<bucket>/<prefix>/runs/<timestamp>/...`: immutable run snapshots.
-- `s3://<bucket>/<prefix>/latest/...`: most recent artifacts for collaborators.
+- `papers_seen=851`
+- `conjecture_candidates=160`
+- `real_open_conjecture=147`
+- `not_real_conjecture=13`
 
-## Shared S3 dataset
+S3 latest:
 
-- Bucket: `conjectures-arxiv-math-067542072602`
-- Prefix: `math-conjectures`
-- Latest path: `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/`
-Latest files:
-- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures_week_live_20260303.sqlite`
-- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures.jsonl`
-- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures.csv`
-- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/papers.jsonl`
+- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/`
+- Includes the canonical SQLite snapshot, base exports, and `real_conjectures_gpt-5-mini.*`.
 
-## Requesting S3 access
+## Requesting S3 Access
 
-Send this info to the dataset maintainer when requesting access:
+Send the maintainer:
 
-- Your AWS account ID.
-- The IAM principal ARN that should get access (user or role).
-- Requested access level (`read-only` recommended for most collaborators).
-- Requested scope (`latest/*` only, or also `runs/*` history).
-- Optional expiration date for temporary access.
+- AWS account ID
+- IAM principal ARN (user/role)
+- Requested level (`read-only` is default)
+- Scope (`latest/*` only, or include `runs/*`)
 
-Recommended default collaborator permissions:
+Typical read-only permissions:
 
-- `s3:ListBucket` on bucket `conjectures-arxiv-math-067542072602`.
-- `s3:GetObject` on `math-conjectures/latest/*`.
-- Optional `s3:GetObject` on `math-conjectures/runs/*` for historical snapshots.
+- `s3:ListBucket` on bucket `conjectures-arxiv-math-067542072602`
+- `s3:GetObject` on `math-conjectures/latest/*`
 
-Quick access check once permissions are granted:
+## Project Layout
 
-```bash
-aws s3 ls s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/
-aws s3 cp s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/conjectures.jsonl - | head
-```
-
-## Notes on coverage
-
-- This version targets papers in `cat:math*` returned by the arXiv API date-range query.
-- Extraction is source-based and currently focused on explicit LaTeX conjecture environments.
-- Papers without accessible source or with nonstandard environments may yield zero conjectures.
+- `src/conjectures_arxiv/cli.py`: CLI entrypoints
+- `src/conjectures_arxiv/pipeline.py`: ingestion orchestration
+- `src/conjectures_arxiv/source_fetcher.py`: source download/extraction
+- `src/conjectures_arxiv/conjecture_extractor.py`: conjecture parsing
+- `src/conjectures_arxiv/llm_filter.py`: GPT-5 Mini labeling
+- `src/conjectures_arxiv/database.py`: SQLite schema + exports
+- `src/conjectures_arxiv/s3_publish.py`: S3 publishing
 
 ## Tests
 

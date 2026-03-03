@@ -53,11 +53,12 @@ class S3Publisher:
         uploaded.append(self.upload_file(db_path, latest_db_key))
 
         if exports_dir.exists():
-            for child in sorted(exports_dir.iterdir()):
+            for child in sorted(exports_dir.rglob("*")):
                 if not child.is_file():
                     continue
-                run_key = f"{run_prefix}{child.name}"
-                latest_key = f"{latest_prefix}{child.name}"
+                relative = child.relative_to(exports_dir).as_posix()
+                run_key = f"{run_prefix}{relative}"
+                latest_key = f"{latest_prefix}{relative}"
                 uploaded.append(self.upload_file(child, run_key))
                 uploaded.append(self.upload_file(child, latest_key))
 

@@ -4,6 +4,7 @@ import csv
 from datetime import datetime
 import json
 from pathlib import Path
+import shutil
 import sqlite3
 from typing import Any
 
@@ -72,6 +73,20 @@ class Database:
                 papers_stored INTEGER NOT NULL DEFAULT 0,
                 conjectures_stored INTEGER NOT NULL DEFAULT 0,
                 notes TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS conjecture_llm_labels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conjecture_id INTEGER NOT NULL,
+                model TEXT NOT NULL,
+                label TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                rationale TEXT NOT NULL,
+                evidence_snippet TEXT NOT NULL,
+                raw_response_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(conjecture_id, model),
+                FOREIGN KEY(conjecture_id) REFERENCES conjectures(id) ON DELETE CASCADE
             );
             """
         )
@@ -228,6 +243,215 @@ class Database:
             "papers_jsonl": papers_jsonl,
         }
 
+    def list_conjectures_for_llm(
+        self,
+        *,
+        model: str,
+        limit: int | None = None,
+        only_unlabeled: bool = True,
+    ) -> list[dict[str, Any]]:
+        sql = """
+            SELECT
+                c.id,
+                c.arxiv_id,
+                p.title,
+                p.summary,
+                p.source_url,
+                c.source_file,
+                c.start_line,
+                c.end_line,
+                c.raw_tex,
+                c.body_tex,
+                c.plain_text
+            FROM conjectures c
+            JOIN papers p ON p.arxiv_id = c.arxiv_id
+        """
+
+        params: list[Any] = []
+        if only_unlabeled:
+            sql += """
+            LEFT JOIN conjecture_llm_labels l
+                ON l.conjecture_id = c.id
+               AND l.model = ?
+            WHERE l.id IS NULL
+            """
+            params.append(model)
+
+        sql += " ORDER BY c.id"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+
+        cursor = self.conn.execute(sql, params)
+        records: list[dict[str, Any]] = []
+        for row in cursor.fetchall():
+            records.append(
+                {
+                    "conjecture_id": row[0],
+                    "arxiv_id": row[1],
+                    "title": row[2],
+                    "summary": row[3],
+                    "source_url": row[4],
+                    "source_file": row[5],
+                    "start_line": row[6],
+                    "end_line": row[7],
+                    "raw_tex": row[8],
+                    "body_tex": row[9],
+                    "plain_text": row[10],
+                }
+            )
+        return records
+
+    def upsert_llm_label(
+        self,
+        *,
+        conjecture_id: int,
+        model: str,
+        label: str,
+        confidence: float,
+        rationale: str,
+        evidence_snippet: str,
+        raw_response_json: str,
+    ) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO conjecture_llm_labels (
+                conjecture_id,
+                model,
+                label,
+                confidence,
+                rationale,
+                evidence_snippet,
+                raw_response_json,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(conjecture_id, model) DO UPDATE SET
+                label = excluded.label,
+                confidence = excluded.confidence,
+                rationale = excluded.rationale,
+                evidence_snippet = excluded.evidence_snippet,
+                raw_response_json = excluded.raw_response_json,
+                created_at = excluded.created_at
+            """,
+            (
+                conjecture_id,
+                model,
+                label,
+                confidence,
+                rationale,
+                evidence_snippet,
+                raw_response_json,
+                utc_now_str(),
+            ),
+        )
+        self.conn.commit()
+
+    def llm_label_counts(self, *, model: str) -> dict[str, int]:
+        cursor = self.conn.execute(
+            """
+            SELECT label, COUNT(*)
+            FROM conjecture_llm_labels
+            WHERE model = ?
+            GROUP BY label
+            """,
+            (model,),
+        )
+        return {str(row[0]): int(row[1]) for row in cursor.fetchall()}
+
+    def export_llm_real_conjectures(
+        self,
+        *,
+        model: str,
+        output_dir: str | Path,
+        min_confidence: float = 0.0,
+    ) -> dict[str, Path]:
+        out_dir = Path(output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        jsonl_path = out_dir / f"real_conjectures_{model.replace('/', '_')}.jsonl"
+        csv_path = out_dir / f"real_conjectures_{model.replace('/', '_')}.csv"
+
+        cursor = self.conn.execute(
+            """
+            SELECT
+                c.id,
+                c.arxiv_id,
+                p.title,
+                p.abs_url,
+                p.pdf_url,
+                p.source_url,
+                c.source_file,
+                c.start_line,
+                c.end_line,
+                c.body_tex,
+                c.plain_text,
+                l.label,
+                l.confidence,
+                l.rationale,
+                l.evidence_snippet,
+                l.created_at
+            FROM conjectures c
+            JOIN papers p ON p.arxiv_id = c.arxiv_id
+            JOIN conjecture_llm_labels l ON l.conjecture_id = c.id
+            WHERE l.model = ?
+              AND l.label = 'real_open_conjecture'
+              AND l.confidence >= ?
+            ORDER BY l.confidence DESC, c.id
+            """,
+            (model, min_confidence),
+        )
+
+        records: list[dict[str, Any]] = []
+        for row in cursor.fetchall():
+            records.append(
+                {
+                    "conjecture_id": row[0],
+                    "arxiv_id": row[1],
+                    "title": row[2],
+                    "abs_url": row[3],
+                    "pdf_url": row[4],
+                    "source_url": row[5],
+                    "source_file": row[6],
+                    "start_line": row[7],
+                    "end_line": row[8],
+                    "body_tex": row[9],
+                    "plain_text": row[10],
+                    "label": row[11],
+                    "confidence": row[12],
+                    "rationale": row[13],
+                    "evidence_snippet": row[14],
+                    "labeled_at": row[15],
+                }
+            )
+
+        self._write_jsonl(jsonl_path, records)
+        self._write_csv(csv_path, records)
+        return {"real_conjectures_jsonl": jsonl_path, "real_conjectures_csv": csv_path}
+
+    def export_parquet(self, output_dir: str | Path) -> dict[str, Path]:
+        out_dir = Path(output_dir)
+        parquet_root = out_dir / "parquet"
+        conjectures_dir = parquet_root / "conjectures"
+        papers_dir = parquet_root / "papers"
+
+        for directory in (conjectures_dir, papers_dir):
+            if directory.exists():
+                shutil.rmtree(directory)
+            directory.mkdir(parents=True, exist_ok=True)
+
+        conjecture_records = self._with_partitions(self._joined_conjecture_records(), datetime_field="published_at")
+        paper_records = self._with_partitions(self._paper_records(), datetime_field="published_at")
+
+        self._write_parquet_dataset(conjecture_records, conjectures_dir)
+        self._write_parquet_dataset(paper_records, papers_dir)
+
+        return {
+            "parquet_root": parquet_root,
+            "conjectures_parquet": conjectures_dir,
+            "papers_parquet": papers_dir,
+        }
+
     def _joined_conjecture_records(self) -> list[dict[str, Any]]:
         cursor = self.conn.execute(
             """
@@ -343,3 +567,39 @@ class Database:
                 if isinstance(csv_record.get("categories"), list):
                     csv_record["categories"] = ";".join(csv_record["categories"])
                 writer.writerow(csv_record)
+
+    @staticmethod
+    def _write_parquet_dataset(records: list[dict[str, Any]], output_dir: Path) -> None:
+        if not records:
+            return
+
+        try:
+            import pyarrow as pa
+            import pyarrow.dataset as ds
+        except (ModuleNotFoundError, ImportError) as exc:
+            raise RuntimeError("Parquet export requires pyarrow. Install with: pip install pyarrow") from exc
+
+        table = pa.Table.from_pylist(records)
+        ds.write_dataset(
+            table,
+            base_dir=str(output_dir),
+            format="parquet",
+            partitioning=["published_year", "published_month"],
+            existing_data_behavior="overwrite_or_ignore",
+        )
+
+    @staticmethod
+    def _with_partitions(records: list[dict[str, Any]], *, datetime_field: str) -> list[dict[str, Any]]:
+        partitioned: list[dict[str, Any]] = []
+        for record in records:
+            copy = record.copy()
+            timestamp = str(copy.get(datetime_field, ""))
+            try:
+                parsed = datetime.strptime(timestamp, TIMESTAMP_FMT)
+                copy["published_year"] = parsed.year
+                copy["published_month"] = parsed.month
+            except ValueError:
+                copy["published_year"] = 0
+                copy["published_month"] = 0
+            partitioned.append(copy)
+        return partitioned

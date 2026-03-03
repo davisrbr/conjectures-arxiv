@@ -17,6 +17,12 @@ dependencies = [
 dev = [
   "pytest>=8.0.0",
 ]
+parquet = [
+  "pyarrow>=16.0.0",
+]
+llm = [
+  "openai>=1.50.0",
+]
 
 [project.scripts]
 conjectures-arxiv = "conjectures_arxiv.cli:main"

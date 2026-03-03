@@ -46,14 +46,18 @@ def test_upload_artifacts_writes_run_and_latest(tmp_path) -> None:
     exports_dir = tmp_path / "exports"
     exports_dir.mkdir()
     (exports_dir / "conjectures.jsonl").write_text("{}\n", encoding="utf-8")
+    nested_dir = exports_dir / "parquet" / "conjectures"
+    nested_dir.mkdir(parents=True)
+    (nested_dir / "part-0001.parquet").write_text("PARQUET", encoding="utf-8")
 
     client = FakeS3Client()
     publisher = S3Publisher(bucket="my-bucket", prefix="dataset", client=client)
     uploaded = publisher.upload_artifacts(db_path=db_path, exports_dir=exports_dir)
 
-    assert len(uploaded) == 4
+    assert len(uploaded) == 6
     keys = [item[2] for item in client.uploads]
     assert any(key.endswith("/conjectures.sqlite") and "/runs/" in key for key in keys)
     assert "dataset/latest/conjectures.sqlite" in keys
     assert any(key.endswith("/conjectures.jsonl") and "/runs/" in key for key in keys)
     assert "dataset/latest/conjectures.jsonl" in keys
+    assert "dataset/latest/parquet/conjectures/part-0001.parquet" in keys
