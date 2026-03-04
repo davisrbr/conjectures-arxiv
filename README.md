@@ -13,7 +13,9 @@ This project ingests recent `math*` arXiv papers, extracts conjecture blocks fro
 - Runs a GPT-5 Mini second-stage classifier with fields:
 - `label` in `{real_open_conjecture, not_real_conjecture, uncertain}`
 - `interestingness_score` (0..1), plus confidence/rationale
+- `viability_score` (0..1), plus confidence/rationale for near-term (1-5 year) solvability
 - Interestingness is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
+- Viability is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
 - Model context includes paper title, authors, abstract, conjecture text, and local source window (default `±20` lines).
 - Retries malformed batch responses per item to avoid parser-artifact labels.
 - Exports JSONL/CSV and uploads to S3.

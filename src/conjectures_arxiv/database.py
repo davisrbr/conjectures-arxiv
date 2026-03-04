@@ -89,6 +89,9 @@ class Database:
                 interestingness_score REAL NOT NULL DEFAULT 0.0,
                 interestingness_confidence REAL NOT NULL DEFAULT 0.0,
                 interestingness_rationale TEXT NOT NULL DEFAULT '',
+                viability_score REAL NOT NULL DEFAULT 0.0,
+                viability_confidence REAL NOT NULL DEFAULT 0.0,
+                viability_rationale TEXT NOT NULL DEFAULT '',
                 assessment_version TEXT NOT NULL DEFAULT '',
                 rationale TEXT NOT NULL,
                 evidence_snippet TEXT NOT NULL,
@@ -144,6 +147,21 @@ class Database:
         self._ensure_column(
             table_name="conjecture_llm_labels",
             column_name="interestingness_rationale",
+            definition="TEXT NOT NULL DEFAULT ''",
+        )
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="viability_score",
+            definition="REAL NOT NULL DEFAULT 0.0",
+        )
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="viability_confidence",
+            definition="REAL NOT NULL DEFAULT 0.0",
+        )
+        self._ensure_column(
+            table_name="conjecture_llm_labels",
+            column_name="viability_rationale",
             definition="TEXT NOT NULL DEFAULT ''",
         )
         self._ensure_column(
@@ -399,6 +417,9 @@ class Database:
         interestingness_score: float = 0.0,
         interestingness_confidence: float = 0.0,
         interestingness_rationale: str = "",
+        viability_score: float = 0.0,
+        viability_confidence: float = 0.0,
+        viability_rationale: str = "",
         assessment_version: str = "",
     ) -> None:
         self.conn.execute(
@@ -411,19 +432,25 @@ class Database:
                 interestingness_score,
                 interestingness_confidence,
                 interestingness_rationale,
+                viability_score,
+                viability_confidence,
+                viability_rationale,
                 assessment_version,
                 rationale,
                 evidence_snippet,
                 raw_response_json,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(conjecture_id, model) DO UPDATE SET
                 label = excluded.label,
                 confidence = excluded.confidence,
                 interestingness_score = excluded.interestingness_score,
                 interestingness_confidence = excluded.interestingness_confidence,
                 interestingness_rationale = excluded.interestingness_rationale,
+                viability_score = excluded.viability_score,
+                viability_confidence = excluded.viability_confidence,
+                viability_rationale = excluded.viability_rationale,
                 assessment_version = excluded.assessment_version,
                 rationale = excluded.rationale,
                 evidence_snippet = excluded.evidence_snippet,
@@ -438,6 +465,9 @@ class Database:
                 interestingness_score,
                 interestingness_confidence,
                 interestingness_rationale,
+                viability_score,
+                viability_confidence,
+                viability_rationale,
                 assessment_version,
                 rationale,
                 evidence_snippet,
@@ -491,6 +521,9 @@ class Database:
                 l.interestingness_score,
                 l.interestingness_confidence,
                 l.interestingness_rationale,
+                l.viability_score,
+                l.viability_confidence,
+                l.viability_rationale,
                 l.assessment_version,
                 l.rationale,
                 l.evidence_snippet,
@@ -526,10 +559,13 @@ class Database:
                     "interestingness_score": row[13],
                     "interestingness_confidence": row[14],
                     "interestingness_rationale": row[15],
-                    "assessment_version": row[16],
-                    "rationale": row[17],
-                    "evidence_snippet": row[18],
-                    "labeled_at": row[19],
+                    "viability_score": row[16],
+                    "viability_confidence": row[17],
+                    "viability_rationale": row[18],
+                    "assessment_version": row[19],
+                    "rationale": row[20],
+                    "evidence_snippet": row[21],
+                    "labeled_at": row[22],
                 }
             )
 

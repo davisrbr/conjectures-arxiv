@@ -145,6 +145,9 @@ def test_llm_label_roundtrip_and_exports(tmp_path) -> None:
         interestingness_score=0.84,
         interestingness_confidence=0.75,
         interestingness_rationale="Touches multiple deep tools.",
+        viability_score=0.61,
+        viability_confidence=0.58,
+        viability_rationale="Appears recently framed with concrete structure.",
         assessment_version="test-v1",
         rationale="Actively posed as open.",
         evidence_snippet="We conjecture...",
@@ -166,6 +169,7 @@ def test_llm_label_roundtrip_and_exports(tmp_path) -> None:
     assert exported["real_conjectures_csv"].exists()
     row = json.loads(exported["real_conjectures_jsonl"].read_text(encoding="utf-8").strip())
     assert row["interestingness_score"] == 0.84
+    assert row["viability_score"] == 0.61
     assert row["assessment_version"] == "test-v1"
     db.close()
 
@@ -200,6 +204,9 @@ def test_init_schema_migrates_llm_label_columns(tmp_path) -> None:
     assert "interestingness_score" in columns
     assert "interestingness_confidence" in columns
     assert "interestingness_rationale" in columns
+    assert "viability_score" in columns
+    assert "viability_confidence" in columns
+    assert "viability_rationale" in columns
     assert "assessment_version" in columns
 
 

@@ -14,7 +14,7 @@ from .source_fetcher import SourceFetcher, assemble_latex_documents
 
 SECTION_PATTERN = re.compile(r"\\(section|subsection|subsubsection)\*?\{(?P<title>[^{}]+)\}", flags=re.IGNORECASE)
 ALLOWED_LABELS = {"real_open_conjecture", "not_real_conjecture", "uncertain"}
-ASSESSMENT_VERSION = "gpt5mini-v2-interestingness-v1"
+ASSESSMENT_VERSION = "gpt5mini-v4-viability-scout-v1"
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,9 @@ class LLMClassification:
     interestingness_score: float
     interestingness_confidence: float
     interestingness_rationale: str
+    viability_score: float
+    viability_confidence: float
+    viability_rationale: str
     assessment_version: str
     rationale: str
     evidence_snippet: str
@@ -195,9 +198,14 @@ class GPT5MiniConjectureFilter:
                 continue
 
             scored = self._score_interestingness(item=item, base=classification)
-            if scored is None:
+            if scored is not None:
+                classification = scored
+                results[conjecture_id] = classification
+
+            viability_scored = self._score_viability(item=item, base=classification)
+            if viability_scored is None:
                 continue
-            results[conjecture_id] = scored
+            results[conjecture_id] = viability_scored
 
         return results
 
@@ -252,6 +260,49 @@ class GPT5MiniConjectureFilter:
                 interestingness_score=score,
                 interestingness_confidence=confidence,
                 interestingness_rationale=rationale,
+                viability_score=base.viability_score,
+                viability_confidence=base.viability_confidence,
+                viability_rationale=base.viability_rationale,
+                assessment_version=ASSESSMENT_VERSION,
+                rationale=base.rationale,
+                evidence_snippet=base.evidence_snippet,
+                raw_response_json=raw_json,
+            )
+        return None
+
+    def _score_viability(self, *, item: dict[str, Any], base: LLMClassification, max_attempts: int = 2) -> LLMClassification | None:
+        conjecture_id = int(item["conjecture_id"])
+        for _ in range(max_attempts):
+            output_text = self._request_model(
+                system_prompt=self._viability_system_prompt(),
+                user_prompt=self._viability_user_prompt(item=item),
+            )
+            entries = self._entries_from_output_text(output_text)
+            if entries:
+                payload = self._find_entry_for_id(entries=entries, conjecture_id=conjecture_id) or entries[0]
+            else:
+                parsed = self._parse_any_json(output_text)
+                payload = parsed if isinstance(parsed, dict) else None
+
+            if payload is None or not self._has_viability_payload(payload):
+                continue
+
+            score = self._clip_confidence(payload.get("viability_score", 0.0))
+            confidence = self._clip_confidence(payload.get("viability_confidence", 0.0))
+            rationale = str(payload.get("viability_rationale", "")).strip()[:600]
+            raw_json = self._merge_raw_responses(
+                label_raw=base.raw_response_json,
+                viability_payload=payload,
+            )
+            return LLMClassification(
+                label=base.label,
+                confidence=base.confidence,
+                interestingness_score=base.interestingness_score,
+                interestingness_confidence=base.interestingness_confidence,
+                interestingness_rationale=base.interestingness_rationale,
+                viability_score=score,
+                viability_confidence=confidence,
+                viability_rationale=rationale,
                 assessment_version=ASSESSMENT_VERSION,
                 rationale=base.rationale,
                 evidence_snippet=base.evidence_snippet,
@@ -385,6 +436,41 @@ class GPT5MiniConjectureFilter:
         )
 
     @staticmethod
+    def _viability_system_prompt() -> str:
+        return (
+            "Your job is to scout for the viability of math conjectures.\n"
+            "Interestingness is scored separately in another step; this step should only estimate viability.\n\n"
+            "You must rely on the text provided plus general mathematical background knowledge. "
+            "Do not assume you can look anything up.\n\n"
+            "Viability scoring target:\n"
+            "- viability_score (0..1): likelihood the conjecture (or a major decisive breakthrough) is resolved "
+            "in roughly the next 5 years.\n"
+            "- viability_confidence (0..1): confidence in the viability estimate (not confidence the conjecture is true).\n\n"
+            "Scoring heuristics for viability (priority):\n"
+            "1) Classic named grand conjecture penalty: for famous decades-old flagship problems (e.g., Hodge/abc/Schanuel/Kakeya/major prime-gap statements), "
+            "set viability very low unless local text strongly indicates imminent resolution.\n"
+            "2) Age/provenance cues: old-year tags, 'open for decades', 'wide open', or 'no approach known' lower viability.\n"
+            "3) Local progress cues raise viability: reductions, strong special cases, near-sharp bounds, low-dimensional settlements, "
+            "or equivalence to a near-solved statement.\n"
+            "4) Scope penalties: highly quantified maximally general formulations lower viability; fixed low-dimensional/family-specific targets raise viability.\n"
+            "5) Field-typical difficulty as tie-breaker only when local cues are weak.\n"
+            "6) Title/author cues are weak secondary nudges only.\n\n"
+            "Calibration anchors:\n"
+            "- 0.01-0.05: iconic decades-old grand conjecture or equivalent.\n"
+            "- 0.05-0.15: very hard broad long-studied problem, no strong local progress cues.\n"
+            "- 0.15-0.35: active area with partial results but still broad/hard.\n"
+            "- 0.35-0.60: plausible near-frontier step with strong partial progress.\n"
+            "- 0.60-0.85: appears close, e.g., one key lemma away.\n"
+            "- 0.85-0.95: only if snippet indicates essentially solved modulo routine closure.\n\n"
+            "When uncertain, prefer mid viability (0.20-0.40) with lower viability_confidence.\n\n"
+            "Output rules:\n"
+            "- Respond with JSON only.\n"
+            "- Return exactly one JSON object with keys: conjecture_id, viability_score, viability_confidence, viability_rationale.\n"
+            "- viability_rationale must be concise (max 40 words), plain text, and grounded in provided cues.\n"
+            "- Do not include nested JSON or extra keys."
+        )
+
+    @staticmethod
     def _batch_user_prompt(*, items: list[dict[str, Any]]) -> str:
         blocks: list[str] = []
         for item in items:
@@ -449,6 +535,19 @@ class GPT5MiniConjectureFilter:
         )
 
     @staticmethod
+    def _viability_user_prompt(*, item: dict[str, Any]) -> str:
+        record = item["record"]
+        context_window = item["context_window"]
+        return (
+            "Rate near-term viability for this open conjecture.\n\n"
+            f"conjecture_id={item['conjecture_id']}\n"
+            f"TITLE: {record['title']}\n"
+            f"AUTHORS: {', '.join(record.get('authors', []))}\n"
+            "LATEX_SNIPPET:\n"
+            f"{context_window}\n"
+        )
+
+    @staticmethod
     def _parse_conjecture_id(payload: dict[str, Any]) -> int | None:
         value = payload.get("conjecture_id", payload.get("id"))
         try:
@@ -466,6 +565,9 @@ class GPT5MiniConjectureFilter:
         interestingness_score = self._clip_confidence(payload.get("interestingness_score", 0.0))
         interestingness_confidence = self._clip_confidence(payload.get("interestingness_confidence", 0.0))
         interestingness_rationale = str(payload.get("interestingness_rationale", "")).strip()[:600]
+        viability_score = self._clip_confidence(payload.get("viability_score", 0.0))
+        viability_confidence = self._clip_confidence(payload.get("viability_confidence", 0.0))
+        viability_rationale = str(payload.get("viability_rationale", "")).strip()[:600]
         rationale = str(payload.get("rationale", "")).strip()[:600]
         evidence = str(payload.get("evidence_snippet", "")).strip()[:600]
 
@@ -483,6 +585,9 @@ class GPT5MiniConjectureFilter:
             interestingness_score=interestingness_score,
             interestingness_confidence=interestingness_confidence,
             interestingness_rationale=interestingness_rationale,
+            viability_score=viability_score,
+            viability_confidence=viability_confidence,
+            viability_rationale=viability_rationale,
             assessment_version=ASSESSMENT_VERSION,
             rationale=rationale,
             evidence_snippet=evidence,
@@ -497,18 +602,29 @@ class GPT5MiniConjectureFilter:
         )
 
     @staticmethod
-    def _merge_raw_responses(*, label_raw: str, interestingness_payload: dict[str, Any]) -> str:
+    def _has_viability_payload(payload: dict[str, Any]) -> bool:
+        return any(
+            key in payload
+            for key in ("viability_score", "viability_confidence", "viability_rationale")
+        )
+
+    @staticmethod
+    def _merge_raw_responses(
+        *,
+        label_raw: str,
+        interestingness_payload: dict[str, Any] | None = None,
+        viability_payload: dict[str, Any] | None = None,
+    ) -> str:
         try:
             label_payload: Any = json.loads(label_raw)
         except (TypeError, ValueError, json.JSONDecodeError):
             label_payload = label_raw
-        return json.dumps(
-            {
-                "label_response": label_payload,
-                "interestingness_response": interestingness_payload,
-            },
-            ensure_ascii=False,
-        )
+        payload: dict[str, Any] = {"label_response": label_payload}
+        if interestingness_payload is not None:
+            payload["interestingness_response"] = interestingness_payload
+        if viability_payload is not None:
+            payload["viability_response"] = viability_payload
+        return json.dumps(payload, ensure_ascii=False)
 
     @staticmethod
     def _empty_uncertain() -> LLMClassification:
@@ -518,6 +634,9 @@ class GPT5MiniConjectureFilter:
             interestingness_score=0.0,
             interestingness_confidence=0.0,
             interestingness_rationale="",
+            viability_score=0.0,
+            viability_confidence=0.0,
+            viability_rationale="",
             assessment_version=ASSESSMENT_VERSION,
             rationale="No parsable model output.",
             evidence_snippet="",
@@ -532,6 +651,9 @@ class GPT5MiniConjectureFilter:
             interestingness_score=0.0,
             interestingness_confidence=0.0,
             interestingness_rationale="",
+            viability_score=0.0,
+            viability_confidence=0.0,
+            viability_rationale="",
             assessment_version=ASSESSMENT_VERSION,
             rationale=classification.rationale,
             evidence_snippet=classification.evidence_snippet,
@@ -636,6 +758,9 @@ class LLMFilterRunner:
                     interestingness_score=classification.interestingness_score,
                     interestingness_confidence=classification.interestingness_confidence,
                     interestingness_rationale=classification.interestingness_rationale,
+                    viability_score=classification.viability_score,
+                    viability_confidence=classification.viability_confidence,
+                    viability_rationale=classification.viability_rationale,
                     assessment_version=classification.assessment_version,
                     rationale=classification.rationale,
                     evidence_snippet=classification.evidence_snippet,

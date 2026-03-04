@@ -93,6 +93,7 @@ def test_gpt5mini_filter_parses_json_response() -> None:
     client = FakeClient(
         '{"label":"real_open_conjecture","confidence":0.87,"interestingness_score":0.79,'
         '"interestingness_confidence":0.72,"interestingness_rationale":"central open direction",'
+        '"viability_score":0.55,"viability_confidence":0.61,"viability_rationale":"recent setup with tractable scope",'
         '"rationale":"open","evidence_snippet":"we conjecture"}'
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
@@ -116,6 +117,9 @@ def test_gpt5mini_filter_parses_json_response() -> None:
     assert result.interestingness_score == 0.79
     assert result.interestingness_confidence == 0.72
     assert result.interestingness_rationale == "central open direction"
+    assert result.viability_score == 0.55
+    assert result.viability_confidence == 0.61
+    assert result.viability_rationale == "recent setup with tractable scope"
     assert result.rationale == "open"
 
 
@@ -198,6 +202,7 @@ def test_gpt5mini_filter_retries_missing_batch_ids() -> None:
             '{"results":[{"conjecture_id":11,"label":"real_open_conjecture","confidence":0.9,"rationale":"open","evidence_snippet":"text"}]}',
             '{"conjecture_id":12,"label":"not_real_conjecture","confidence":0.91,"rationale":"resolved","evidence_snippet":"proved"}',
             '{"conjecture_id":11,"interestingness_score":0.77,"interestingness_confidence":0.71,"interestingness_rationale":"deep conjectural structure"}',
+            '{"conjecture_id":11,"viability_score":0.43,"viability_confidence":0.66,"viability_rationale":"looks active but hard"}',
         ]
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
@@ -236,15 +241,17 @@ def test_gpt5mini_filter_retries_missing_batch_ids() -> None:
     assert results[11].label == "real_open_conjecture"
     assert results[12].label == "not_real_conjecture"
     assert results[11].interestingness_score == 0.77
-    assert client.responses.calls == 3
+    assert results[11].viability_score == 0.43
+    assert client.responses.calls == 4
 
 
-def test_gpt5mini_filter_scores_interestingness_only_for_real_open() -> None:
+def test_gpt5mini_filter_scores_open_only_metrics_only_for_real_open() -> None:
     client = FakeClient(
         [
             '{"results":[{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"rationale":"open","evidence_snippet":"we conjecture"},'
             '{"conjecture_id":32,"label":"not_real_conjecture","confidence":0.96,"rationale":"resolved","evidence_snippet":"proved"}]}',
             '{"conjecture_id":31,"interestingness_score":0.77,"interestingness_confidence":0.7,"interestingness_rationale":"likely technically deep"}',
+            '{"conjecture_id":31,"viability_score":0.52,"viability_confidence":0.64,"viability_rationale":"promising near-term methods"}',
         ]
     )
     filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
@@ -281,8 +288,10 @@ def test_gpt5mini_filter_scores_interestingness_only_for_real_open() -> None:
         ]
     )
     assert results[31].interestingness_score == 0.77
+    assert results[31].viability_score == 0.52
     assert results[32].interestingness_score == 0.0
-    assert client.responses.calls == 2
+    assert results[32].viability_score == 0.0
+    assert client.responses.calls == 3
 
 
 def test_llm_filter_runner_batches(tmp_path) -> None:
@@ -330,4 +339,4 @@ def test_gpt5mini_filter_includes_authors_in_prompt() -> None:
     request = client.responses.last_kwargs
     assert request is not None
     user_block = request["input"][1]["content"][0]["text"]
-    assert "Authors: Alice, Bob" in user_block
+    assert "AUTHORS: Alice, Bob" in user_block
