@@ -294,6 +294,59 @@ def test_gpt5mini_filter_scores_open_only_metrics_only_for_real_open() -> None:
     assert client.responses.calls == 3
 
 
+def test_gpt5mini_filter_batch_scoring_does_not_reuse_single_payload_for_other_ids() -> None:
+    client = FakeClient(
+        [
+            '{"results":[{"conjecture_id":31,"label":"real_open_conjecture","confidence":0.92,"rationale":"open","evidence_snippet":"we conjecture"},'
+            '{"conjecture_id":32,"label":"real_open_conjecture","confidence":0.93,"rationale":"open","evidence_snippet":"still open"}]}',
+            '{"results":[{"conjecture_id":31,"interestingness_score":0.77,"interestingness_confidence":0.7,"interestingness_rationale":"first item"}]}',
+            '{"conjecture_id":32,"interestingness_score":0.41,"interestingness_confidence":0.6,"interestingness_rationale":"second item"}',
+            '{"results":[{"conjecture_id":31,"viability_score":0.52,"viability_confidence":0.64,"viability_rationale":"first viability"}]}',
+            '{"conjecture_id":32,"viability_score":0.19,"viability_confidence":0.55,"viability_rationale":"second viability"}',
+        ]
+    )
+    filterer = GPT5MiniConjectureFilter(model="gpt-5-mini", client=client)
+    results = filterer.classify_batch(
+        items=[
+            {
+                "conjecture_id": 31,
+                "record": {
+                    "arxiv_id": "a",
+                    "title": "t1",
+                    "summary": "s1",
+                    "source_file": "f",
+                    "start_line": 1,
+                    "end_line": 1,
+                    "raw_tex": "x",
+                    "plain_text": "x",
+                },
+                "context_window": "ctx1",
+            },
+            {
+                "conjecture_id": 32,
+                "record": {
+                    "arxiv_id": "b",
+                    "title": "t2",
+                    "summary": "s2",
+                    "source_file": "f",
+                    "start_line": 1,
+                    "end_line": 1,
+                    "raw_tex": "y",
+                    "plain_text": "y",
+                },
+                "context_window": "ctx2",
+            },
+        ]
+    )
+    assert results[31].interestingness_score == 0.77
+    assert results[31].viability_score == 0.52
+    assert results[32].interestingness_score == 0.41
+    assert results[32].viability_score == 0.19
+    assert results[32].interestingness_rationale == "second item"
+    assert results[32].viability_rationale == "second viability"
+    assert client.responses.calls == 5
+
+
 def test_llm_filter_runner_batches(tmp_path) -> None:
     db = Database(tmp_path / "c.sqlite")
     db.init_schema()
@@ -340,3 +393,38 @@ def test_gpt5mini_filter_includes_authors_in_prompt() -> None:
     assert request is not None
     user_block = request["input"][1]["content"][0]["text"]
     assert "AUTHORS: Alice, Bob" in user_block
+
+
+def test_label_prompt_requires_exact_statement_judgment() -> None:
+    prompt = GPT5MiniConjectureFilter._label_system_prompt()
+    assert "exact extracted statement" in prompt
+    assert "broader parent conjecture" in prompt
+    assert "background motivation" in prompt
+
+
+def test_viability_prompts_include_full_context_and_guardrails() -> None:
+    system_prompt = GPT5MiniConjectureFilter._viability_system_prompt()
+    assert "Do not confuse likely true with likely solved." in system_prompt
+    assert "sufficiently large n/p/q" in system_prompt
+    assert "already proved/refuted in this paper" in system_prompt
+
+    user_prompt = GPT5MiniConjectureFilter._viability_user_prompt(
+        item={
+            "conjecture_id": 1,
+            "record": {
+                "title": "T",
+                "authors": ["Alice", "Bob"],
+                "summary": "S",
+                "source_file": "main.tex",
+                "start_line": 1,
+                "end_line": 2,
+                "raw_tex": "raw",
+                "plain_text": "plain",
+            },
+            "context_window": "ctx",
+        }
+    )
+    assert "ABSTRACT: S" in user_prompt
+    assert "CONJECTURE_RAW_TEX:\nraw" in user_prompt
+    assert "CONJECTURE_BODY:\nplain" in user_prompt
+    assert "LOCAL_SOURCE_CONTEXT:\nctx" in user_prompt

@@ -14,7 +14,7 @@ from .source_fetcher import SourceFetcher, assemble_latex_documents
 
 SECTION_PATTERN = re.compile(r"\\(section|subsection|subsubsection)\*?\{(?P<title>[^{}]+)\}", flags=re.IGNORECASE)
 ALLOWED_LABELS = {"real_open_conjecture", "not_real_conjecture", "uncertain"}
-ASSESSMENT_VERSION = "gpt5mini-v4-viability-scout-v1"
+ASSESSMENT_VERSION = "gpt5mini-v5-open-exact-v1"
 
 
 @dataclass(frozen=True)
@@ -187,7 +187,8 @@ class GPT5MiniConjectureFilter:
                 continue
             results[conjecture_id] = recovered
 
-        # Score interestingness only for real/open conjectures.
+        # Score interestingness/viability only for real/open conjectures.
+        open_items: list[dict[str, Any]] = []
         for item in items:
             conjecture_id = int(item["conjecture_id"])
             classification = results.get(conjecture_id)
@@ -196,16 +197,18 @@ class GPT5MiniConjectureFilter:
             if classification.label != "real_open_conjecture":
                 results[conjecture_id] = self._without_interestingness(classification)
                 continue
+            open_items.append(item)
 
-            scored = self._score_interestingness(item=item, base=classification)
-            if scored is not None:
-                classification = scored
-                results[conjecture_id] = classification
+        if not open_items:
+            return results
 
-            viability_scored = self._score_viability(item=item, base=classification)
-            if viability_scored is None:
-                continue
-            results[conjecture_id] = viability_scored
+        interestingness_updates = self._score_interestingness_batch(items=open_items, results=results)
+        for conjecture_id, classification in interestingness_updates.items():
+            results[conjecture_id] = classification
+
+        viability_updates = self._score_viability_batch(items=open_items, results=results)
+        for conjecture_id, classification in viability_updates.items():
+            results[conjecture_id] = classification
 
         return results
 
@@ -270,6 +273,73 @@ class GPT5MiniConjectureFilter:
             )
         return None
 
+    def _score_interestingness_batch(
+        self,
+        *,
+        items: list[dict[str, Any]],
+        results: dict[int, LLMClassification],
+        max_attempts: int = 2,
+    ) -> dict[int, LLMClassification]:
+        updates: dict[int, LLMClassification] = {}
+        if not items:
+            return updates
+
+        for _ in range(max_attempts):
+            output_text = self._request_model(
+                system_prompt=self._interestingness_system_prompt(),
+                user_prompt=self._interestingness_batch_user_prompt(items=items),
+            )
+            entries = self._entries_from_output_text(output_text)
+            if not entries:
+                continue
+
+            for item in items:
+                conjecture_id = int(item["conjecture_id"])
+                base = results.get(conjecture_id)
+                if base is None or base.label != "real_open_conjecture":
+                    continue
+                payload = self._find_entry_for_id_strict(entries=entries, conjecture_id=conjecture_id)
+                if payload is None or not self._has_interestingness_payload(payload):
+                    continue
+
+                score = self._clip_confidence(payload.get("interestingness_score", 0.0))
+                confidence = self._clip_confidence(payload.get("interestingness_confidence", 0.0))
+                rationale = str(payload.get("interestingness_rationale", "")).strip()[:600]
+                raw_json = self._merge_raw_responses(
+                    label_raw=base.raw_response_json,
+                    interestingness_payload=payload,
+                )
+                updates[conjecture_id] = LLMClassification(
+                    label=base.label,
+                    confidence=base.confidence,
+                    interestingness_score=score,
+                    interestingness_confidence=confidence,
+                    interestingness_rationale=rationale,
+                    viability_score=base.viability_score,
+                    viability_confidence=base.viability_confidence,
+                    viability_rationale=base.viability_rationale,
+                    assessment_version=ASSESSMENT_VERSION,
+                    rationale=base.rationale,
+                    evidence_snippet=base.evidence_snippet,
+                    raw_response_json=raw_json,
+                )
+
+            if len(updates) == len(items):
+                return updates
+
+        for item in items:
+            conjecture_id = int(item["conjecture_id"])
+            if conjecture_id in updates:
+                continue
+            base = results.get(conjecture_id)
+            if base is None or base.label != "real_open_conjecture":
+                continue
+            scored = self._score_interestingness(item=item, base=base)
+            if scored is not None:
+                updates[conjecture_id] = scored
+
+        return updates
+
     def _score_viability(self, *, item: dict[str, Any], base: LLMClassification, max_attempts: int = 2) -> LLMClassification | None:
         conjecture_id = int(item["conjecture_id"])
         for _ in range(max_attempts):
@@ -310,6 +380,73 @@ class GPT5MiniConjectureFilter:
             )
         return None
 
+    def _score_viability_batch(
+        self,
+        *,
+        items: list[dict[str, Any]],
+        results: dict[int, LLMClassification],
+        max_attempts: int = 2,
+    ) -> dict[int, LLMClassification]:
+        updates: dict[int, LLMClassification] = {}
+        if not items:
+            return updates
+
+        for _ in range(max_attempts):
+            output_text = self._request_model(
+                system_prompt=self._viability_system_prompt(),
+                user_prompt=self._viability_batch_user_prompt(items=items),
+            )
+            entries = self._entries_from_output_text(output_text)
+            if not entries:
+                continue
+
+            for item in items:
+                conjecture_id = int(item["conjecture_id"])
+                base = results.get(conjecture_id)
+                if base is None or base.label != "real_open_conjecture":
+                    continue
+                payload = self._find_entry_for_id_strict(entries=entries, conjecture_id=conjecture_id)
+                if payload is None or not self._has_viability_payload(payload):
+                    continue
+
+                score = self._clip_confidence(payload.get("viability_score", 0.0))
+                confidence = self._clip_confidence(payload.get("viability_confidence", 0.0))
+                rationale = str(payload.get("viability_rationale", "")).strip()[:600]
+                raw_json = self._merge_raw_responses(
+                    label_raw=base.raw_response_json,
+                    viability_payload=payload,
+                )
+                updates[conjecture_id] = LLMClassification(
+                    label=base.label,
+                    confidence=base.confidence,
+                    interestingness_score=base.interestingness_score,
+                    interestingness_confidence=base.interestingness_confidence,
+                    interestingness_rationale=base.interestingness_rationale,
+                    viability_score=score,
+                    viability_confidence=confidence,
+                    viability_rationale=rationale,
+                    assessment_version=ASSESSMENT_VERSION,
+                    rationale=base.rationale,
+                    evidence_snippet=base.evidence_snippet,
+                    raw_response_json=raw_json,
+                )
+
+            if len(updates) == len(items):
+                return updates
+
+        for item in items:
+            conjecture_id = int(item["conjecture_id"])
+            if conjecture_id in updates:
+                continue
+            base = results.get(conjecture_id)
+            if base is None or base.label != "real_open_conjecture":
+                continue
+            scored = self._score_viability(item=item, base=base)
+            if scored is not None:
+                updates[conjecture_id] = scored
+
+        return updates
+
     def _request_model(self, *, system_prompt: str, user_prompt: str) -> str:
         response = self.client.responses.create(
             model=self.model,
@@ -346,6 +483,18 @@ class GPT5MiniConjectureFilter:
                 return entry
         if len(entries) == 1:
             return entries[0]
+        return None
+
+    @staticmethod
+    def _find_entry_for_id_strict(*, entries: list[dict[str, Any]], conjecture_id: int) -> dict[str, Any] | None:
+        for entry in entries:
+            value = entry.get("conjecture_id", entry.get("id"))
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed == conjecture_id:
+                return entry
         return None
 
     @staticmethod
@@ -406,12 +555,20 @@ class GPT5MiniConjectureFilter:
     @staticmethod
     def _label_system_prompt() -> str:
         return (
-            "You classify whether a LaTeX conjecture block is a real, currently-open conjecture in this paper. "
+            "You classify whether the exact extracted LaTeX conjecture statement is still a real, currently-open conjecture "
+            "after accounting for results and context in this paper. "
             "Respond with JSON only.\n\n"
             "Label definitions:\n"
-            "- real_open_conjecture: an actively posed open conjecture in this work or immediate related literature context.\n"
-            "- not_real_conjecture: inactive/commented statement, resolved/known/immediate-from-known theorem, or purely historical mention.\n"
+            "- real_open_conjecture: the exact extracted statement remains unresolved as written and is being posed as an active open target.\n"
+            "- not_real_conjecture: the exact extracted statement is already proved/refuted/known, is just a solved special case of a broader parent conjecture, "
+            "is only background motivation or survey context, is inactive/commented/empty, or follows immediately from known results.\n"
             "- uncertain: insufficient context.\n\n"
+            "Decision rules:\n"
+            "- Judge the exact extracted statement, not a broader parent conjecture.\n"
+            "- If the paper proves the extracted statement, disproves it, or gives a counterexample, label not_real_conjecture.\n"
+            "- If the paper proves a special case (for example k=4) of a broader open conjecture, then that extracted special-case statement is not_real_conjecture even if the parent conjecture remains open.\n"
+            "- If the extracted statement is only cited as famous background motivation (for example Hodge/abc/Schanuel) and is not the paper's own still-open target, label not_real_conjecture.\n"
+            "- If the paper proves only an analogue, reduction, or nearby variant, keep real_open_conjecture only when the exact extracted statement itself still appears unresolved.\n\n"
             "Return JSON object with a top-level key 'results' that is a list.\n"
             "Each list item must have: conjecture_id, label, confidence (0..1), rationale, evidence_snippet.\n\n"
             "Keep rationale and evidence_snippet concise (max 40 words each). "
@@ -419,18 +576,30 @@ class GPT5MiniConjectureFilter:
             "Few-shot examples:\n"
             "Example 1 (not real): conjecture appears inside \\iffalse...\\fi or fully commented with % lines.\n"
             "Example 2 (not real): text says the conjecture follows immediately from Four Color Theorem.\n"
-            "Example 3 (real): 'A minimally nonperfectly divisible graph contains no clique cutset.' presented as an open conjecture and investigated in paper."
+            "Example 3 (not real): extracted statement is the k=4 case of a broader k-uniform conjecture, and the paper proves the k=4 case.\n"
+            "Example 4 (not real): paper states a famous classical conjecture only as background motivation before proving a related theorem.\n"
+            "Example 5 (real): 'A minimally nonperfectly divisible graph contains no clique cutset.' presented as an open conjecture and investigated in paper."
         )
 
     @staticmethod
     def _interestingness_system_prompt() -> str:
         return (
-            "You rate interestingness for conjectures already classified as currently-open. "
+            "You rate interestingness for exact still-open conjectures drawn from recent arXiv math papers. "
             "Respond with JSON only.\n\n"
-            "Define interestingness_score (0..1) as likelihood the conjecture is meaningfully difficult/deep "
-            "and likely important to specialists if solved.\n"
+            "Define interestingness_score (0..1) as a blend of mathematical depth and broader significance if solved. "
+            "Do not score high merely because a statement is open, technical, numerically supported, or important only to the current paper.\n"
             "Define interestingness_confidence (0..1) as confidence in the estimate.\n"
             "interestingness_rationale should be concise (max 40 words) and grounded in provided local context.\n\n"
+            "Calibration anchors:\n"
+            "- 0.05-0.25: typo-like, self-referential, or mathematically slight statement.\n"
+            "- 0.25-0.45: narrow local technical extension, finite-case completion, or table-filling conjecture.\n"
+            "- 0.45-0.65: meaningful specialist conjecture with genuine content but limited scope.\n"
+            "- 0.65-0.82: central active problem within a subfield, or a conjecture with clear structural consequences.\n"
+            "- 0.82-0.93: major field-level conjecture or an unusually deep bridge between areas.\n"
+            "- 0.93-0.99: only for landmark flagship problems with very broad consequences.\n\n"
+            "Penalty rules:\n"
+            "- Finite-family classifications, local strengthenings, and numerically motivated pattern guesses usually belong at 0.60 or below unless the text shows broad consequences.\n"
+            "- If a background flagship conjecture slips through despite the earlier filter, do not automatically assign 0.95+ unless the paper is genuinely centered on resolving it.\n\n"
             "Do not output a label. Do not include nested JSON in text fields.\n"
             "Return one JSON object with keys: conjecture_id, interestingness_score, interestingness_confidence, interestingness_rationale."
         )
@@ -443,24 +612,31 @@ class GPT5MiniConjectureFilter:
             "You must rely on the text provided plus general mathematical background knowledge. "
             "Do not assume you can look anything up.\n\n"
             "Viability scoring target:\n"
-            "- viability_score (0..1): likelihood the conjecture (or a major decisive breakthrough) is resolved "
+            "- viability_score (0..1): likelihood the exact extracted statement (or a major decisive breakthrough on it) is resolved "
             "in roughly the next 5 years.\n"
             "- viability_confidence (0..1): confidence in the viability estimate (not confidence the conjecture is true).\n\n"
+            "Critical distinction:\n"
+            "- Do not confuse likely true with likely solved.\n"
+            "- Numerics, computer experiments, verification for many cases, asymptotic/large-parameter results, or a proof for sufficiently large n/p/q are weak evidence about 5-year solvability of the full statement.\n"
+            "- Strong evidence that the statement is true should not by itself push viability high.\n"
+            "- If the provided context suggests the exact extracted statement is already proved/refuted in this paper or is only background motivation, set viability very low (about 0.00-0.05) rather than rewarding it.\n\n"
             "Scoring heuristics for viability (priority):\n"
             "1) Classic named grand conjecture penalty: for famous decades-old flagship problems (e.g., Hodge/abc/Schanuel/Kakeya/major prime-gap statements), "
             "set viability very low unless local text strongly indicates imminent resolution.\n"
             "2) Age/provenance cues: old-year tags, 'open for decades', 'wide open', or 'no approach known' lower viability.\n"
-            "3) Local progress cues raise viability: reductions, strong special cases, near-sharp bounds, low-dimensional settlements, "
-            "or equivalence to a near-solved statement.\n"
-            "4) Scope penalties: highly quantified maximally general formulations lower viability; fixed low-dimensional/family-specific targets raise viability.\n"
-            "5) Field-typical difficulty as tie-breaker only when local cues are weak.\n"
-            "6) Title/author cues are weak secondary nudges only.\n\n"
+            "3) Local progress cues raise viability only when they shrink the remaining gap in a concrete way: reductions to a few lemmas, finite explicit residue cases, or direct closure of an existing method.\n"
+            "4) Asymptotic results, many settled special cases, or strong numerics are only modest positive evidence unless the remaining gap is explicitly finite and mechanically checkable.\n"
+            "5) Scope penalties: highly quantified maximally general formulations lower viability; fixed low-dimensional/family-specific targets raise viability.\n"
+            "6) 'Only small cases remain' is not enough for very high viability unless the snippet gives a credible explicit route for finishing those cases.\n"
+            "7) Field-typical difficulty as tie-breaker only when local cues are weak.\n"
+            "8) Title/author cues are weak secondary nudges only.\n\n"
             "Calibration anchors:\n"
+            "- 0.00-0.05: already appears solved/refuted here, or classic decades-old grand conjecture with no imminent route.\n"
             "- 0.01-0.05: iconic decades-old grand conjecture or equivalent.\n"
             "- 0.05-0.15: very hard broad long-studied problem, no strong local progress cues.\n"
-            "- 0.15-0.35: active area with partial results but still broad/hard.\n"
-            "- 0.35-0.60: plausible near-frontier step with strong partial progress.\n"
-            "- 0.60-0.85: appears close, e.g., one key lemma away.\n"
+            "- 0.15-0.35: active area with partial results but still broad/hard, or asymptotic/numerical progress without a concrete closing route.\n"
+            "- 0.35-0.60: plausible near-frontier step with strong partial progress and a reasonably concrete path.\n"
+            "- 0.60-0.85: appears close because the remaining gap is explicit and technically concentrated.\n"
             "- 0.85-0.95: only if snippet indicates essentially solved modulo routine closure.\n\n"
             "When uncertain, prefer mid viability (0.20-0.40) with lower viability_confidence.\n\n"
             "Output rules:\n"
@@ -535,6 +711,31 @@ class GPT5MiniConjectureFilter:
         )
 
     @staticmethod
+    def _interestingness_batch_user_prompt(*, items: list[dict[str, Any]]) -> str:
+        blocks: list[str] = []
+        for item in items:
+            record = item["record"]
+            context_window = item["context_window"]
+            blocks.append(
+                (
+                    f"### conjecture_id={item['conjecture_id']}\n"
+                    f"arXiv ID: {record['arxiv_id']}\n"
+                    f"Title: {record['title']}\n"
+                    f"Authors: {', '.join(record.get('authors', []))}\n"
+                    f"Abstract: {record['summary']}\n"
+                    f"Source file: {record['source_file']}\n"
+                    f"Line span: {record['start_line']}-{record['end_line']}\n\n"
+                    f"Conjecture raw TeX:\n{record['raw_tex']}\n\n"
+                    f"Conjecture body (normalized):\n{record['plain_text']}\n\n"
+                    f"Local source context:\n{context_window}\n"
+                )
+            )
+        return (
+            "Rate interestingness for each open conjecture below and return one JSON result per conjecture_id.\n\n"
+            + "\n\n".join(blocks)
+        )
+
+    @staticmethod
     def _viability_user_prompt(*, item: dict[str, Any]) -> str:
         record = item["record"]
         context_window = item["context_window"]
@@ -543,8 +744,37 @@ class GPT5MiniConjectureFilter:
             f"conjecture_id={item['conjecture_id']}\n"
             f"TITLE: {record['title']}\n"
             f"AUTHORS: {', '.join(record.get('authors', []))}\n"
-            "LATEX_SNIPPET:\n"
+            f"ABSTRACT: {record['summary']}\n"
+            f"SOURCE_FILE: {record['source_file']}\n"
+            f"LINE_SPAN: {record['start_line']}-{record['end_line']}\n\n"
+            f"CONJECTURE_RAW_TEX:\n{record['raw_tex']}\n\n"
+            f"CONJECTURE_BODY:\n{record['plain_text']}\n\n"
+            "LOCAL_SOURCE_CONTEXT:\n"
             f"{context_window}\n"
+        )
+
+    @staticmethod
+    def _viability_batch_user_prompt(*, items: list[dict[str, Any]]) -> str:
+        blocks: list[str] = []
+        for item in items:
+            record = item["record"]
+            context_window = item["context_window"]
+            blocks.append(
+                (
+                    f"### conjecture_id={item['conjecture_id']}\n"
+                    f"TITLE: {record['title']}\n"
+                    f"AUTHORS: {', '.join(record.get('authors', []))}\n"
+                    f"ABSTRACT: {record['summary']}\n"
+                    f"SOURCE_FILE: {record['source_file']}\n"
+                    f"LINE_SPAN: {record['start_line']}-{record['end_line']}\n\n"
+                    f"CONJECTURE_RAW_TEX:\n{record['raw_tex']}\n\n"
+                    f"CONJECTURE_BODY:\n{record['plain_text']}\n\n"
+                    f"LOCAL_SOURCE_CONTEXT:\n{context_window}\n"
+                )
+            )
+        return (
+            "Rate near-term viability for each open conjecture below and return one JSON result per conjecture_id.\n\n"
+            + "\n\n".join(blocks)
         )
 
     @staticmethod
