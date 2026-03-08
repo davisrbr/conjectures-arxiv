@@ -243,3 +243,75 @@ def test_init_schema_migrates_papers_metadata_columns(tmp_path) -> None:
     assert "journal_ref" in columns
     assert "comments" in columns
     assert "license_url" in columns
+
+
+def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:
+    db = Database(tmp_path / "conjectures.sqlite")
+    db.init_schema()
+    paper = _sample_paper()
+    db.upsert_paper(paper)
+    db.insert_conjectures(paper.arxiv_id, [_sample_conjecture()])
+
+    unlabeled = db.list_conjectures_for_llm(model="gpt-5-mini", only_unlabeled=True)
+    conjecture_id = int(unlabeled[0]["conjecture_id"])
+
+    db.upsert_llm_label(
+        conjecture_id=conjecture_id,
+        model="gpt-5-mini",
+        label="real_open_conjecture",
+        confidence=0.91,
+        interestingness_score=0.45,
+        interestingness_confidence=0.62,
+        interestingness_rationale="Useful but niche.",
+        viability_score=0.73,
+        viability_confidence=0.64,
+        viability_rationale="Technical gap looks tractable.",
+        assessment_version="test-v1",
+        rationale="Explicitly stated as open.",
+        evidence_snippet="Conjecture.",
+        raw_response_json='{"label":"real_open_conjecture"}',
+    )
+
+    records = db.list_real_conjectures_for_solver(
+        label_model="gpt-5-mini",
+        min_confidence=0.9,
+        min_viability=0.7,
+        conjecture_id=conjecture_id,
+    )
+    assert len(records) == 1
+    assert records[0]["conjecture_id"] == conjecture_id
+    assert records[0]["viability_score"] == 0.73
+    assert records[0]["abs_url"] == paper.abs_url
+
+    db.create_solver_attempt(
+        conjecture_id=conjecture_id,
+        label_model="gpt-5-mini",
+        solver_model="gpt-5.4",
+        prompt_version="solver-test-v1",
+        reasoning_effort="xhigh",
+        search_context_size="high",
+        response_id="resp_123",
+        status="queued",
+        instructions="system",
+        prompt_text="user",
+    )
+    queued = db.get_solver_attempt(response_id="resp_123")
+    assert queued is not None
+    assert queued["status"] == "queued"
+    assert queued["solver_model"] == "gpt-5.4"
+
+    db.update_solver_attempt(
+        "resp_123",
+        status="completed",
+        output_text="Proof sketch.",
+        sources_json='[{"url":"https://example.com"}]',
+        raw_response_json='{"id":"resp_123"}',
+        error_json="",
+        completed_at="2026-03-08T12:00:00Z",
+    )
+    completed = db.get_solver_attempt(response_id="resp_123")
+    assert completed is not None
+    assert completed["status"] == "completed"
+    assert completed["output_text"] == "Proof sketch."
+    assert completed["completed_at"] == "2026-03-08T12:00:00Z"
+    db.close()

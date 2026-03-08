@@ -100,6 +100,34 @@ class Database:
                 UNIQUE(conjecture_id, model),
                 FOREIGN KEY(conjecture_id) REFERENCES conjectures(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS conjecture_solver_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conjecture_id INTEGER NOT NULL,
+                label_model TEXT NOT NULL DEFAULT '',
+                solver_model TEXT NOT NULL,
+                prompt_version TEXT NOT NULL DEFAULT '',
+                reasoning_effort TEXT NOT NULL DEFAULT '',
+                search_context_size TEXT NOT NULL DEFAULT '',
+                response_id TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL,
+                instructions TEXT NOT NULL DEFAULT '',
+                prompt_text TEXT NOT NULL DEFAULT '',
+                output_text TEXT NOT NULL DEFAULT '',
+                sources_json TEXT NOT NULL DEFAULT '[]',
+                raw_response_json TEXT NOT NULL DEFAULT '{}',
+                error_json TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT,
+                FOREIGN KEY(conjecture_id) REFERENCES conjectures(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_solver_attempts_conjecture
+                ON conjecture_solver_attempts (conjecture_id);
+
+            CREATE INDEX IF NOT EXISTS idx_solver_attempts_status
+                ON conjecture_solver_attempts (status);
             """
         )
         self._ensure_paper_columns()
@@ -404,6 +432,97 @@ class Database:
             )
         return records
 
+    def list_real_conjectures_for_solver(
+        self,
+        *,
+        label_model: str,
+        limit: int | None = None,
+        min_confidence: float = 0.0,
+        min_viability: float = 0.0,
+        conjecture_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        sql = """
+            SELECT
+                c.id,
+                c.arxiv_id,
+                p.title,
+                p.summary,
+                p.authors_json,
+                p.abs_url,
+                p.pdf_url,
+                p.source_url,
+                c.source_file,
+                c.start_line,
+                c.end_line,
+                c.raw_tex,
+                c.body_tex,
+                c.plain_text,
+                l.label,
+                l.confidence,
+                l.interestingness_score,
+                l.interestingness_confidence,
+                l.interestingness_rationale,
+                l.viability_score,
+                l.viability_confidence,
+                l.viability_rationale,
+                l.assessment_version,
+                l.rationale,
+                l.evidence_snippet,
+                l.created_at
+            FROM conjectures c
+            JOIN papers p ON p.arxiv_id = c.arxiv_id
+            JOIN conjecture_llm_labels l ON l.conjecture_id = c.id
+            WHERE l.model = ?
+              AND l.label = 'real_open_conjecture'
+              AND l.confidence >= ?
+              AND l.viability_score >= ?
+        """
+
+        params: list[Any] = [label_model, min_confidence, min_viability]
+        if conjecture_id is not None:
+            sql += " AND c.id = ?"
+            params.append(conjecture_id)
+
+        sql += " ORDER BY l.viability_score DESC, l.interestingness_score DESC, c.id"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+
+        cursor = self.conn.execute(sql, params)
+        records: list[dict[str, Any]] = []
+        for row in cursor.fetchall():
+            records.append(
+                {
+                    "conjecture_id": row[0],
+                    "arxiv_id": row[1],
+                    "title": row[2],
+                    "summary": row[3],
+                    "authors": json.loads(row[4]),
+                    "abs_url": row[5],
+                    "pdf_url": row[6],
+                    "source_url": row[7],
+                    "source_file": row[8],
+                    "start_line": row[9],
+                    "end_line": row[10],
+                    "raw_tex": row[11],
+                    "body_tex": row[12],
+                    "plain_text": row[13],
+                    "label": row[14],
+                    "confidence": row[15],
+                    "interestingness_score": row[16],
+                    "interestingness_confidence": row[17],
+                    "interestingness_rationale": row[18],
+                    "viability_score": row[19],
+                    "viability_confidence": row[20],
+                    "viability_rationale": row[21],
+                    "assessment_version": row[22],
+                    "rationale": row[23],
+                    "evidence_snippet": row[24],
+                    "labeled_at": row[25],
+                }
+            )
+        return records
+
     def upsert_llm_label(
         self,
         *,
@@ -476,6 +595,158 @@ class Database:
             ),
         )
         self.conn.commit()
+
+    def create_solver_attempt(
+        self,
+        *,
+        conjecture_id: int,
+        label_model: str,
+        solver_model: str,
+        prompt_version: str,
+        reasoning_effort: str,
+        search_context_size: str,
+        response_id: str,
+        status: str,
+        instructions: str,
+        prompt_text: str,
+        output_text: str = "",
+        sources_json: str = "[]",
+        raw_response_json: str = "{}",
+        error_json: str = "",
+        completed_at: str | None = None,
+    ) -> None:
+        now = utc_now_str()
+        self.conn.execute(
+            """
+            INSERT INTO conjecture_solver_attempts (
+                conjecture_id,
+                label_model,
+                solver_model,
+                prompt_version,
+                reasoning_effort,
+                search_context_size,
+                response_id,
+                status,
+                instructions,
+                prompt_text,
+                output_text,
+                sources_json,
+                raw_response_json,
+                error_json,
+                created_at,
+                updated_at,
+                completed_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                conjecture_id,
+                label_model,
+                solver_model,
+                prompt_version,
+                reasoning_effort,
+                search_context_size,
+                response_id,
+                status,
+                instructions,
+                prompt_text,
+                output_text,
+                sources_json,
+                raw_response_json,
+                error_json,
+                now,
+                now,
+                completed_at,
+            ),
+        )
+        self.conn.commit()
+
+    def update_solver_attempt(
+        self,
+        response_id: str,
+        *,
+        status: str,
+        output_text: str = "",
+        sources_json: str = "[]",
+        raw_response_json: str = "{}",
+        error_json: str = "",
+        completed_at: str | None = None,
+    ) -> None:
+        self.conn.execute(
+            """
+            UPDATE conjecture_solver_attempts
+            SET status = ?,
+                output_text = ?,
+                sources_json = ?,
+                raw_response_json = ?,
+                error_json = ?,
+                updated_at = ?,
+                completed_at = ?
+            WHERE response_id = ?
+            """,
+            (
+                status,
+                output_text,
+                sources_json,
+                raw_response_json,
+                error_json,
+                utc_now_str(),
+                completed_at,
+                response_id,
+            ),
+        )
+        self.conn.commit()
+
+    def get_solver_attempt(self, *, response_id: str) -> dict[str, Any] | None:
+        cursor = self.conn.execute(
+            """
+            SELECT
+                id,
+                conjecture_id,
+                label_model,
+                solver_model,
+                prompt_version,
+                reasoning_effort,
+                search_context_size,
+                response_id,
+                status,
+                instructions,
+                prompt_text,
+                output_text,
+                sources_json,
+                raw_response_json,
+                error_json,
+                created_at,
+                updated_at,
+                completed_at
+            FROM conjecture_solver_attempts
+            WHERE response_id = ?
+            """,
+            (response_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "conjecture_id": row[1],
+            "label_model": row[2],
+            "solver_model": row[3],
+            "prompt_version": row[4],
+            "reasoning_effort": row[5],
+            "search_context_size": row[6],
+            "response_id": row[7],
+            "status": row[8],
+            "instructions": row[9],
+            "prompt_text": row[10],
+            "output_text": row[11],
+            "sources_json": row[12],
+            "raw_response_json": row[13],
+            "error_json": row[14],
+            "created_at": row[15],
+            "updated_at": row[16],
+            "completed_at": row[17],
+        }
 
     def llm_label_counts(self, *, model: str) -> dict[str, int]:
         cursor = self.conn.execute(

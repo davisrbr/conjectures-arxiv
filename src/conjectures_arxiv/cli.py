@@ -2,14 +2,23 @@ from __future__ import annotations
 
 import argparse
 from datetime import date, timedelta
+import json
 import logging
 from pathlib import Path
+import time
 from typing import Callable
 
 from .database import Database
-from .llm_filter import GPT5MiniConjectureFilter, LLMFilterRunner
+from .llm_filter import GPT5MiniConjectureFilter, LLMFilterRunner, SourceContextProvider
 from .pipeline import IngestionPipeline
 from .s3_publish import S3Publisher
+from .solver import (
+    DEFAULT_MAX_OUTPUT_TOKENS,
+    DEFAULT_REASONING_EFFORT,
+    OpenAIConjectureSolver,
+    SOLVER_PROMPT_VERSION,
+    TERMINAL_RESPONSE_STATUSES,
+)
 
 
 def parse_date(value: str) -> date:
@@ -65,6 +74,23 @@ def build_parser() -> argparse.ArgumentParser:
     filter_parser.add_argument("--export-real", action="store_true")
     filter_parser.add_argument("--min-confidence", type=float, default=0.0)
     filter_parser.set_defaults(handler=cmd_filter_llm)
+
+    solve_parser = subparsers.add_parser("solve-llm", help="Run autonomous solver attempts with GPT-5.4 + web search")
+    solve_parser.add_argument("--db-path", default="data/conjectures.sqlite")
+    solve_parser.add_argument("--label-model", default="gpt-5-mini")
+    solve_parser.add_argument("--solver-model", default="gpt-5.4")
+    solve_parser.add_argument("--conjecture-id", type=int, default=None)
+    solve_parser.add_argument("--limit", type=int, default=1)
+    solve_parser.add_argument("--min-confidence", type=float, default=0.0)
+    solve_parser.add_argument("--min-viability", type=float, default=0.0)
+    solve_parser.add_argument("--reasoning-effort", default=DEFAULT_REASONING_EFFORT)
+    solve_parser.add_argument("--search-context-size", default="high")
+    solve_parser.add_argument("--max-output-tokens", type=int, default=DEFAULT_MAX_OUTPUT_TOKENS)
+    solve_parser.add_argument("--max-tool-calls", type=int, default=32)
+    solve_parser.add_argument("--poll-interval-seconds", type=float, default=10.0)
+    solve_parser.add_argument("--wait", action="store_true")
+    solve_parser.add_argument("--response-id", default="")
+    solve_parser.set_defaults(handler=cmd_solve_llm)
 
     return parser
 
@@ -277,6 +303,219 @@ def cmd_filter_llm(args: argparse.Namespace) -> int:
         return 0
     finally:
         db.close()
+
+
+def cmd_solve_llm(args: argparse.Namespace) -> int:
+    db = Database(args.db_path)
+    db.init_schema()
+
+    try:
+        try:
+            solver = OpenAIConjectureSolver(model=args.solver_model)
+        except RuntimeError as exc:
+            print(f"LLM solver setup failed: {exc}")
+            return 1
+
+        if args.response_id:
+            snapshot = solver.retrieve(response_id=args.response_id)
+            db.update_solver_attempt(
+                args.response_id,
+                status=snapshot.status,
+                output_text=snapshot.output_text,
+                sources_json=snapshot.sources_json,
+                raw_response_json=snapshot.raw_response_json,
+                error_json=snapshot.error_json,
+                completed_at=snapshot.completed_at,
+            )
+            _print_solver_snapshot(
+                response_id=args.response_id,
+                conjecture_id=None,
+                status=snapshot.status,
+                output_text=snapshot.output_text,
+                completed_at=snapshot.completed_at,
+                error_json=snapshot.error_json,
+            )
+            return 0 if snapshot.status == "completed" else 1
+
+        records = db.list_real_conjectures_for_solver(
+            label_model=args.label_model,
+            limit=args.limit,
+            min_confidence=args.min_confidence,
+            min_viability=args.min_viability,
+            conjecture_id=args.conjecture_id,
+        )
+        if not records:
+            print("No matching conjectures found for solver run.")
+            return 1
+
+        context_provider = SourceContextProvider()
+        exit_code = 0
+        for record in records:
+            context_window = ""
+            try:
+                context_window = context_provider.get_context(record, window_lines=20)
+            except Exception as exc:  # noqa: BLE001
+                print(
+                    "Context fetch failed:",
+                    f"conjecture_id={record['conjecture_id']}",
+                    f"arxiv_id={record['arxiv_id']}",
+                    f"error={exc}",
+                )
+
+            prompt = solver.build_prompt(record=record, context_window=context_window)
+            try:
+                snapshot = solver.submit(
+                    prompt=prompt,
+                    record=record,
+                    reasoning_effort=args.reasoning_effort,
+                    search_context_size=args.search_context_size,
+                    max_output_tokens=args.max_output_tokens,
+                    max_tool_calls=args.max_tool_calls,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(
+                    "Solver submission failed:",
+                    f"conjecture_id={record['conjecture_id']}",
+                    f"arxiv_id={record['arxiv_id']}",
+                    f"error={exc}",
+                )
+                exit_code = 1
+                continue
+
+            db.create_solver_attempt(
+                conjecture_id=int(record["conjecture_id"]),
+                label_model=args.label_model,
+                solver_model=args.solver_model,
+                prompt_version=SOLVER_PROMPT_VERSION,
+                reasoning_effort=args.reasoning_effort,
+                search_context_size=args.search_context_size,
+                response_id=snapshot.response_id,
+                status=snapshot.status,
+                instructions=prompt.instructions,
+                prompt_text=prompt.prompt_text,
+                output_text=snapshot.output_text,
+                sources_json=snapshot.sources_json,
+                raw_response_json=snapshot.raw_response_json,
+                error_json=snapshot.error_json,
+                completed_at=snapshot.completed_at,
+            )
+
+            _print_solver_snapshot(
+                response_id=snapshot.response_id,
+                conjecture_id=int(record["conjecture_id"]),
+                status=snapshot.status,
+                output_text=snapshot.output_text,
+                completed_at=snapshot.completed_at,
+                error_json=snapshot.error_json,
+            )
+
+            if not args.wait or snapshot.status in TERMINAL_RESPONSE_STATUSES:
+                if snapshot.status in {"failed", "cancelled", "incomplete"}:
+                    exit_code = 1
+                continue
+
+            snapshot = _poll_solver_attempt(
+                solver=solver,
+                db=db,
+                response_id=snapshot.response_id,
+                poll_interval_seconds=args.poll_interval_seconds,
+            )
+            _print_solver_snapshot(
+                response_id=snapshot.response_id,
+                conjecture_id=int(record["conjecture_id"]),
+                status=snapshot.status,
+                output_text=snapshot.output_text,
+                completed_at=snapshot.completed_at,
+                error_json=snapshot.error_json,
+            )
+            if snapshot.status in {"failed", "cancelled", "incomplete"}:
+                exit_code = 1
+
+        return exit_code
+    finally:
+        db.close()
+
+
+def _poll_solver_attempt(
+    *,
+    solver: OpenAIConjectureSolver,
+    db: Database,
+    response_id: str,
+    poll_interval_seconds: float,
+):
+    while True:
+        snapshot = solver.retrieve(response_id=response_id)
+        db.update_solver_attempt(
+            response_id,
+            status=snapshot.status,
+            output_text=snapshot.output_text,
+            sources_json=snapshot.sources_json,
+            raw_response_json=snapshot.raw_response_json,
+            error_json=snapshot.error_json,
+            completed_at=snapshot.completed_at,
+        )
+        if snapshot.status in TERMINAL_RESPONSE_STATUSES:
+            return snapshot
+        print(f"Polling response_id={response_id} status={snapshot.status}")
+        time.sleep(poll_interval_seconds)
+
+
+def _print_solver_snapshot(
+    *,
+    response_id: str,
+    conjecture_id: int | None,
+    status: str,
+    output_text: str,
+    completed_at: str | None,
+    error_json: str,
+) -> None:
+    prefix = f"Solver response: response_id={response_id}"
+    if conjecture_id is not None:
+        prefix += f" conjecture_id={conjecture_id}"
+    prefix += f" status={status}"
+    if completed_at:
+        prefix += f" completed_at={completed_at}"
+    print(prefix)
+    if output_text.strip():
+        print(output_text.strip())
+        return
+
+    message = _solver_failure_message(status=status, error_json=error_json)
+    if message:
+        print(message)
+
+
+def _solver_failure_message(*, status: str, error_json: str) -> str:
+    if not error_json.strip():
+        if status == "incomplete":
+            return "Solver ended incomplete with no visible output."
+        if status in {"failed", "cancelled"}:
+            return f"Solver ended with status={status}."
+        return ""
+
+    try:
+        payload = json.loads(error_json)
+    except json.JSONDecodeError:
+        return f"Solver ended with status={status}."
+
+    if status == "incomplete":
+        reason = ""
+        incomplete_details = payload.get("incomplete_details")
+        if isinstance(incomplete_details, dict):
+            reason = str(incomplete_details.get("reason", "")).strip()
+        if reason:
+            return f"Solver ended incomplete: reason={reason}. No visible output was captured."
+        return "Solver ended incomplete with no visible output."
+
+    error = payload.get("error")
+    if isinstance(error, dict):
+        message = str(error.get("message", "")).strip()
+        code = str(error.get("code", "")).strip()
+        if message and code:
+            return f"Solver ended with status={status}: {code}: {message}"
+        if message:
+            return f"Solver ended with status={status}: {message}"
+    return f"Solver ended with status={status}."
 
 
 def main(argv: list[str] | None = None) -> int:
