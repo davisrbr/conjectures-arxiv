@@ -92,6 +92,16 @@ def build_parser() -> argparse.ArgumentParser:
     solve_parser.add_argument("--response-id", default="")
     solve_parser.set_defaults(handler=cmd_solve_llm)
 
+    solve_status_parser = subparsers.add_parser("solve-status", help="Inspect and export solver attempt statuses")
+    solve_status_parser.add_argument("--db-path", default="data/conjectures.sqlite")
+    solve_status_parser.add_argument("--response-id", default="")
+    solve_status_parser.add_argument("--conjecture-id", type=int, default=None)
+    solve_status_parser.add_argument("--status", default="")
+    solve_status_parser.add_argument("--limit", type=int, default=20)
+    solve_status_parser.add_argument("--refresh-open", action="store_true")
+    solve_status_parser.add_argument("--output-dir", default="")
+    solve_status_parser.set_defaults(handler=cmd_solve_status)
+
     return parser
 
 
@@ -436,6 +446,54 @@ def cmd_solve_llm(args: argparse.Namespace) -> int:
         db.close()
 
 
+def cmd_solve_status(args: argparse.Namespace) -> int:
+    db = Database(args.db_path)
+    db.init_schema()
+
+    try:
+        records = db.list_solver_attempts(
+            limit=args.limit,
+            response_id=args.response_id or None,
+            conjecture_id=args.conjecture_id,
+            status=args.status or None,
+        )
+        if args.refresh_open and records:
+            try:
+                solver = OpenAIConjectureSolver()
+            except RuntimeError as exc:
+                print(f"LLM solver setup failed: {exc}")
+                return 1
+            refreshed, refresh_failures = _refresh_open_attempts(db=db, solver=solver, records=records)
+            print(
+                "Refreshed solver attempts:",
+                f"updated={refreshed}",
+                f"failures={refresh_failures}",
+            )
+            records = db.list_solver_attempts(
+                limit=args.limit,
+                response_id=args.response_id or None,
+                conjecture_id=args.conjecture_id,
+                status=args.status or None,
+            )
+
+        _print_solver_status_records(records)
+
+        if args.output_dir:
+            exported = db.export_solver_attempts(
+                output_dir=args.output_dir,
+                limit=args.limit,
+                response_id=args.response_id or None,
+                conjecture_id=args.conjecture_id,
+                status=args.status or None,
+            )
+            print("Exported solver attempt artifacts:")
+            for artifact in exported.values():
+                print(f"  - {artifact}")
+        return 0
+    finally:
+        db.close()
+
+
 def _poll_solver_attempt(
     *,
     solver: OpenAIConjectureSolver,
@@ -458,6 +516,78 @@ def _poll_solver_attempt(
             return snapshot
         print(f"Polling response_id={response_id} status={snapshot.status}")
         time.sleep(poll_interval_seconds)
+
+
+def _refresh_open_attempts(
+    *,
+    db: Database,
+    solver: OpenAIConjectureSolver,
+    records: list[dict[str, object]],
+) -> tuple[int, int]:
+    refreshed = 0
+    failures = 0
+    for record in records:
+        status = str(record.get("status", ""))
+        if status in TERMINAL_RESPONSE_STATUSES:
+            continue
+        response_id = str(record.get("response_id", "")).strip()
+        if not response_id:
+            continue
+        try:
+            snapshot = solver.retrieve(response_id=response_id)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Refresh failed: response_id={response_id} error={exc}")
+            failures += 1
+            continue
+
+        db.update_solver_attempt(
+            response_id,
+            status=snapshot.status,
+            output_text=snapshot.output_text,
+            sources_json=snapshot.sources_json,
+            raw_response_json=snapshot.raw_response_json,
+            error_json=snapshot.error_json,
+            completed_at=snapshot.completed_at,
+        )
+        refreshed += 1
+    return refreshed, failures
+
+
+def _print_solver_status_records(records: list[dict[str, object]]) -> None:
+    if not records:
+        print("No solver attempts found.")
+        return
+
+    counts: dict[str, int] = {}
+    for record in records:
+        status = str(record.get("status", ""))
+        counts[status] = counts.get(status, 0) + 1
+
+    print(
+        "Solver attempt summary:",
+        f"total={len(records)}",
+        f"statuses={counts}",
+    )
+    for record in records:
+        line = (
+            f"attempt_id={record['attempt_id']} "
+            f"conjecture_id={record['conjecture_id']} "
+            f"status={record['status']} "
+            f"response_id={record['response_id']} "
+            f"viability={record['viability_score']:.2f} "
+            f"interestingness={record['interestingness_score']:.2f} "
+            f"title={record['title']}"
+        )
+        completed_at = str(record.get("completed_at", "") or "").strip()
+        if completed_at:
+            line += f" completed_at={completed_at}"
+        output_length = int(record.get("output_length", 0) or 0)
+        if output_length:
+            line += f" output_len={output_length}"
+        reason = _solver_status_reason(str(record.get("status", "")), str(record.get("error_json", "")))
+        if reason:
+            line += f" note={reason}"
+        print(line)
 
 
 def _print_solver_snapshot(
@@ -483,6 +613,15 @@ def _print_solver_snapshot(
     message = _solver_failure_message(status=status, error_json=error_json)
     if message:
         print(message)
+
+
+def _solver_status_reason(status: str, error_json: str) -> str:
+    message = _solver_failure_message(status=status, error_json=error_json)
+    if not message:
+        return ""
+    if message.endswith("."):
+        return message[:-1]
+    return message
 
 
 def _solver_failure_message(*, status: str, error_json: str) -> str:

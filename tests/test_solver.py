@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from conjectures_arxiv.cli import _solver_failure_message, build_parser
+from conjectures_arxiv.cli import _solver_failure_message, _solver_status_reason, build_parser
 from conjectures_arxiv.solver import OpenAIConjectureSolver
 from conjectures_arxiv.solver import DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_REASONING_EFFORT
 
@@ -196,13 +196,23 @@ def test_solver_retrieve_incomplete_captures_reason() -> None:
 def test_solver_cli_defaults_and_incomplete_message() -> None:
     parser = build_parser()
     args = parser.parse_args(["solve-llm"])
+    status_args = parser.parse_args(["solve-status"])
 
     assert args.reasoning_effort == DEFAULT_REASONING_EFFORT
     assert args.max_output_tokens == DEFAULT_MAX_OUTPUT_TOKENS
+    assert status_args.limit == 20
+    assert status_args.refresh_open is False
     assert (
         _solver_failure_message(
             status="incomplete",
             error_json='{"incomplete_details":{"reason":"max_output_tokens"}}',
         )
         == "Solver ended incomplete: reason=max_output_tokens. No visible output was captured."
+    )
+    assert (
+        _solver_status_reason(
+            status="incomplete",
+            error_json='{"incomplete_details":{"reason":"max_output_tokens"}}',
+        )
+        == "Solver ended incomplete: reason=max_output_tokens. No visible output was captured"
     )

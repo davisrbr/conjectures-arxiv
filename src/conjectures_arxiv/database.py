@@ -748,6 +748,121 @@ class Database:
             "completed_at": row[17],
         }
 
+    def list_solver_attempts(
+        self,
+        *,
+        limit: int | None = None,
+        response_id: str | None = None,
+        conjecture_id: int | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        sql = """
+            SELECT
+                a.id,
+                a.conjecture_id,
+                c.arxiv_id,
+                p.title,
+                a.label_model,
+                a.solver_model,
+                a.prompt_version,
+                a.reasoning_effort,
+                a.search_context_size,
+                a.response_id,
+                a.status,
+                a.instructions,
+                a.prompt_text,
+                a.output_text,
+                a.sources_json,
+                a.raw_response_json,
+                a.error_json,
+                a.created_at,
+                a.updated_at,
+                a.completed_at,
+                COALESCE(l.viability_score, 0.0),
+                COALESCE(l.interestingness_score, 0.0)
+            FROM conjecture_solver_attempts a
+            JOIN conjectures c ON c.id = a.conjecture_id
+            JOIN papers p ON p.arxiv_id = c.arxiv_id
+            LEFT JOIN conjecture_llm_labels l
+                ON l.conjecture_id = a.conjecture_id
+               AND l.model = a.label_model
+            WHERE 1 = 1
+        """
+
+        params: list[Any] = []
+        if response_id:
+            sql += " AND a.response_id = ?"
+            params.append(response_id)
+        if conjecture_id is not None:
+            sql += " AND a.conjecture_id = ?"
+            params.append(conjecture_id)
+        if status:
+            sql += " AND a.status = ?"
+            params.append(status)
+
+        sql += " ORDER BY a.id DESC"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+
+        cursor = self.conn.execute(sql, params)
+        records: list[dict[str, Any]] = []
+        for row in cursor.fetchall():
+            output_text = str(row[13] or "")
+            records.append(
+                {
+                    "attempt_id": row[0],
+                    "conjecture_id": row[1],
+                    "arxiv_id": row[2],
+                    "title": row[3],
+                    "label_model": row[4],
+                    "solver_model": row[5],
+                    "prompt_version": row[6],
+                    "reasoning_effort": row[7],
+                    "search_context_size": row[8],
+                    "response_id": row[9],
+                    "status": row[10],
+                    "instructions": row[11],
+                    "prompt_text": row[12],
+                    "output_text": output_text,
+                    "output_length": len(output_text),
+                    "sources_json": row[14],
+                    "raw_response_json": row[15],
+                    "error_json": row[16],
+                    "created_at": row[17],
+                    "updated_at": row[18],
+                    "completed_at": row[19],
+                    "viability_score": row[20],
+                    "interestingness_score": row[21],
+                }
+            )
+        return records
+
+    def export_solver_attempts(
+        self,
+        *,
+        output_dir: str | Path,
+        limit: int | None = None,
+        response_id: str | None = None,
+        conjecture_id: int | None = None,
+        status: str | None = None,
+    ) -> dict[str, Path]:
+        out_dir = Path(output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        jsonl_path = out_dir / "solver_attempts.jsonl"
+        csv_path = out_dir / "solver_attempts.csv"
+
+        records = self.list_solver_attempts(
+            limit=limit,
+            response_id=response_id,
+            conjecture_id=conjecture_id,
+            status=status,
+        )
+        self._write_jsonl(jsonl_path, records)
+        self._write_csv(csv_path, records)
+        return {"solver_attempts_jsonl": jsonl_path, "solver_attempts_csv": csv_path}
+
     def llm_label_counts(self, *, model: str) -> dict[str, int]:
         cursor = self.conn.execute(
             """

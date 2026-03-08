@@ -314,4 +314,17 @@ def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:
     assert completed["status"] == "completed"
     assert completed["output_text"] == "Proof sketch."
     assert completed["completed_at"] == "2026-03-08T12:00:00Z"
+
+    listed = db.list_solver_attempts(conjecture_id=conjecture_id)
+    assert len(listed) == 1
+    assert listed[0]["attempt_id"] == queued["id"]
+    assert listed[0]["output_length"] == len("Proof sketch.")
+    assert listed[0]["viability_score"] == 0.73
+
+    exported = db.export_solver_attempts(output_dir=tmp_path / "solver_exports")
+    assert exported["solver_attempts_jsonl"].exists()
+    assert exported["solver_attempts_csv"].exists()
+    exported_row = json.loads(exported["solver_attempts_jsonl"].read_text(encoding="utf-8").strip())
+    assert exported_row["response_id"] == "resp_123"
+    assert exported_row["status"] == "completed"
     db.close()
