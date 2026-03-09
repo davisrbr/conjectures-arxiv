@@ -22,9 +22,9 @@ Two more outputs are useful, but they should be read as statement failures rathe
 
 ## What Looks Real
 
-### Constant-stepsize SGD: both conjectures went down
+### Constant-stepsize SGD: stationary moment conjecture likely false
 
-The earlier batch already likely killed the paper's Stein-equation conjecture. This new batch likely kills the companion stationary-law / uniform-moment conjecture too. The new counterexample is especially good because it uses the easiest allowed case, `h=2`, where the recursion becomes linear. With centered heavy-tailed noise having finite third but infinite sixth moment, the stationary AR(1) law exists, but it cannot have the conjectured sixth moment. That is the right kind of obstruction: simple, structural, and hard to repair without changing the assumptions.
+A strong counterexample targets the stationary-law / uniform-moment conjecture directly. It uses the simplest admissible case, `h=2`, where the recursion reduces to a linear AR(1) model. With centered heavy-tailed noise whose third moment is finite but sixth moment is infinite, the stationary law still exists, but it cannot satisfy the conjectured sixth-moment bound. That is a compelling obstruction on its own merits: it appears in a basic allowed regime, it is easy to state, and it is not the kind of failure that can be repaired without strengthening the assumptions.
 
 ### The `\widetilde\Xi_n` zero-limit conjecture
 
