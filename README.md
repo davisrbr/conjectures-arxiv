@@ -1,34 +1,19 @@
 # Conjectures from Recent arXiv Math Papers
 
-This project ingests recent `math*` arXiv papers, extracts conjecture blocks from LaTeX source, and publishes a shareable dataset.
+This repository builds a shareable dataset of open conjectures from recent `math*` arXiv papers. It can ingest papers, expand TeX sources, extract conjecture-like environments, store them in SQLite, label candidates with GPT-5 Mini, and run GPT-5.4 solver attempts on the most tractable items.
 
-## What It Does
+## Pipeline
 
-- Queries arXiv by date range (default: past 7 days).
-- Downloads source (`/e-print/{id}`), resolves `\\input`/`\\include`, and extracts conjecture-like environments.
-- Cleans inactive TeX regions before extraction (`%` comments and `\\iffalse ... \\fi`).
-- Stores papers + conjectures in SQLite.
-- Captures arXiv paper license metadata (`license_url`) from the Atom feed.
-- Captures additional arXiv metadata when available: `primary_category`, `doi`, `journal_ref`, `comments`, `license_url` (with abs-page fallback for license).
-- Runs a GPT-5 Mini second-stage classifier with fields:
-- `label` in `{real_open_conjecture, not_real_conjecture, uncertain}`
-- `interestingness_score` (0..1), plus confidence/rationale
-- `viability_score` (0..1), plus confidence/rationale for near-term (1-5 year) solvability
-- Interestingness is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
-- Viability is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
-- Model context includes paper title, authors, abstract, conjecture text, and local source window (default `±20` lines).
-- Runs a GPT-5.4 solver stage on the most tractable conjectures (highest-viability `real_open_conjecture` items), with background web-enabled attempts to prove, disprove, or otherwise resolve them.
-- Retries malformed batch responses per item to avoid parser-artifact labels.
-- Exports JSONL/CSV and uploads to S3.
+1. Ingest recent arXiv math papers over a date range or rolling weekly window.
+2. Download source from arXiv, resolve `\input` and `\include`, and remove inactive TeX regions such as `%` comments and `\iffalse ... \fi`.
+3. Extract conjecture-like blocks and store them with paper metadata in SQLite, including arXiv category, DOI, journal reference, comments, and license when available.
+4. Optionally label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for interestingness and near-term viability.
+5. Optionally run GPT-5.4 solver attempts, with web search enabled, on the highest-priority real conjectures.
+6. Export JSONL/CSV, optionally export Parquet, and optionally publish artifacts to S3.
 
-## Current Solver Results
+## Install
 
-- In the current 20-attempt GPT-5.4 solver pilot on the highest-priority viable conjectures, the model produced 6 strong settlement-quality outcomes: 2 confirmations and 4 disconfirmations.
-- It also produced 2 formalization failures, 4 partial-progress outcomes, 1 qualified confirmation, 1 "resolved in substance" draft question, and 6 unresolved outcomes.
-- These are model-reported results, not independently verified mathematical proofs or counterexamples.
-- See `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md` and `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv`.
-
-## Quick Start
+Python `>=3.10` is required.
 
 ```bash
 python -m venv .venv
@@ -36,19 +21,40 @@ source .venv/bin/activate
 pip install -e '.[dev,llm]'
 ```
 
-Initialize DB:
+Optional extras:
+
+- Add `parquet` if you want Parquet export support: `pip install -e '.[dev,llm,parquet]'`
+- Set `OPENAI_API_KEY` before running `filter-llm` or `solve-llm`
+- Configure AWS credentials before running `upload-s3`
+
+## Quick Start
+
+Create the database:
 
 ```bash
 conjectures-arxiv init-db --db-path data/conjectures.sqlite
 ```
 
-Ingest the past week:
+Ingest a rolling week of papers:
 
 ```bash
-conjectures-arxiv ingest-week --db-path data/conjectures.sqlite --days 7 --output-dir data/exports
+conjectures-arxiv ingest-week \
+  --db-path data/conjectures.sqlite \
+  --days 7 \
+  --output-dir data/exports
 ```
 
-Run GPT-5 Mini filtering:
+Ingest an explicit date range instead:
+
+```bash
+conjectures-arxiv ingest-range \
+  --db-path data/conjectures.sqlite \
+  --from-date 2026-03-01 \
+  --to-date 2026-03-07 \
+  --output-dir data/exports
+```
+
+Label conjectures with GPT-5 Mini:
 
 ```bash
 export OPENAI_API_KEY=...
@@ -61,7 +67,7 @@ conjectures-arxiv filter-llm \
   --min-confidence 0.7
 ```
 
-Attempt to resolve the most tractable conjectures:
+Submit GPT-5.4 solver attempts on the highest-priority conjectures:
 
 ```bash
 export OPENAI_API_KEY=...
@@ -71,7 +77,7 @@ conjectures-arxiv solve-llm \
   --limit 10
 ```
 
-Check or export solver-attempt status:
+`solve-llm` submits attempts asynchronously by default. Use `--wait` if you want to block on completion, or poll/export status with:
 
 ```bash
 export OPENAI_API_KEY=...
@@ -82,7 +88,15 @@ conjectures-arxiv solve-status \
   --output-dir data/exports_solver_status
 ```
 
-Upload to S3:
+Export the database and current artifact sets:
+
+```bash
+conjectures-arxiv export \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/exports
+```
+
+Upload exports to S3:
 
 ```bash
 conjectures-arxiv upload-s3 \
@@ -92,7 +106,7 @@ conjectures-arxiv upload-s3 \
   --prefix math-conjectures
 ```
 
-## Canonical Snapshot (Current)
+## Current Snapshot
 
 Local canonical dataset:
 
@@ -110,19 +124,39 @@ Current totals:
 - `real_open_conjecture=147`
 - `not_real_conjecture=13`
 
-S3 latest:
+Latest S3 location:
 
 - `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/`
-- Includes the canonical SQLite snapshot, base exports, and `real_conjectures_gpt-5-mini.*`.
 
-## Requesting S3 Access
+## Current Solver Pilot
 
-Send the maintainer:
+The current GPT-5.4 solver pilot covers 20 attempts on the highest-priority viable conjectures.
+
+- 6 strong settlement-quality outcomes: 2 confirmations and 4 disconfirmations
+- 2 formalization failures
+- 4 partial-progress outcomes
+- 1 qualified confirmation
+- 1 draft question that looks resolved in substance
+- 6 unresolved outcomes
+
+These are model-reported results, not independently verified mathematical proofs or counterexamples.
+
+Artifacts:
+
+- `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md`
+- `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv`
+- `data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md`
+- `data/exports_solver_status_20260309_attempts20/solver_attempts_20.jsonl`
+- `data/exports_solver_status_20260309_attempts20/solver_attempts_20.csv`
+
+## S3 Access
+
+To request access, send the maintainer:
 
 - AWS account ID
-- IAM principal ARN (user/role)
-- Requested level (`read-only` is default)
-- Scope (`latest/*` only, or include `runs/*`)
+- IAM principal ARN
+- Requested level, usually `read-only`
+- Requested scope, usually `latest/*` or `runs/*`
 
 Typical read-only permissions:
 
@@ -133,12 +167,13 @@ Typical read-only permissions:
 
 - `src/conjectures_arxiv/cli.py`: CLI entrypoints
 - `src/conjectures_arxiv/pipeline.py`: ingestion orchestration
-- `src/conjectures_arxiv/source_fetcher.py`: source download/extraction
+- `src/conjectures_arxiv/arxiv_client.py`: arXiv API client
+- `src/conjectures_arxiv/source_fetcher.py`: source download and expansion
 - `src/conjectures_arxiv/conjecture_extractor.py`: conjecture parsing
 - `src/conjectures_arxiv/llm_filter.py`: GPT-5 Mini labeling
-- `src/conjectures_arxiv/solver.py`: GPT-5.4 solver prompt + Responses API helpers
-- `src/conjectures_arxiv/database.py`: SQLite schema + exports
-- `src/conjectures_arxiv/s3_publish.py`: S3 publishing
+- `src/conjectures_arxiv/solver.py`: GPT-5.4 solver prompt and response handling
+- `src/conjectures_arxiv/database.py`: SQLite schema and exports
+- `src/conjectures_arxiv/s3_publish.py`: S3 publishing helpers
 
 ## Tests
 
