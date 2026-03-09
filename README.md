@@ -1,16 +1,16 @@
 # Conjectures from Recent arXiv Math Papers
 
-This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a clean, shareable dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
+This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 798 conjecture candidates, including 676 labeled `real_open_conjecture`, from papers published between February 2, 2026 and March 4, 2026.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 676 (likely open) conjectures, from papers published between February 2, 2026 and March 4, 2026.
 
-In an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 proofs that might hold up: 2 proposed confirmations of open conjectures, and 4 apparent disconfirmations**. There are also several potentially useful partial results. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the strongest results is in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are model-reported results, not independently verified proofs or counterexamples.
+For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 proofs that might hold up: 2 confirmations of open conjectures, and 4 apparent disconfirmations**. There are also several potentially useful partial results. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated, and the proofs have not been independently verified.
 
 ## Pipeline
 
-1. Ingest recent arXiv math papers over a date range or rolling weekly window.
-2. Extract conjecture blocks and store them with paper metadata in SQLite, including arXiv category, DOI, journal reference, comments, and license when available.
-3. Label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for `interestingness` and near-term solution `viability`.
+1. Ingest recent arXiv math papers over a date range (we choose the ~past month).
+2. Extract conjecture blocks and store them with paper metadata, including arXiv category, DOI, journal reference, comments, and license.
+3. Label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for `interestingness` and near-term solution `viability`, i.e. the tractability.
 4. Run GPT-5.4 Thinking (xhigh) to attempt solutions on a subset of the most tractable conjectures.
 
 ## Install
@@ -27,9 +27,7 @@ Optional extras:
 
 - Add `parquet` if you want Parquet export support: `pip install -e '.[dev,llm,parquet]'`
 - Add `huggingface` if you want Hugging Face uploads: `pip install -e '.[dev,llm,huggingface]'`
-- Set `OPENAI_API_KEY` before running `filter-llm` or `solve-llm`
-- Set `HF_TOKEN` before running `publish-hf` unless you already have a cached Hugging Face login
-- Configure AWS credentials before running `upload-s3`
+- Set `OPENAI_API_KEY` before running `filter-llm` or `solve-llm`, and `HF_TOKEN` before running `publish-hf`
 
 ## Quick Start
 
@@ -81,16 +79,7 @@ conjectures-arxiv solve-llm \
   --limit 10
 ```
 
-`solve-llm` submits attempts asynchronously by default. Use `--wait` if you want to block on completion, or poll/export status with:
-
-```bash
-export OPENAI_API_KEY=...
-conjectures-arxiv solve-status \
-  --db-path data/conjectures.sqlite \
-  --limit 10 \
-  --refresh-open \
-  --output-dir data/exports_solver_status
-```
+`solve-llm` submits attempts asynchronously by default. 
 
 Export the database and current artifact sets:
 
@@ -100,70 +89,26 @@ conjectures-arxiv export \
   --output-dir data/exports
 ```
 
-Upload exports to S3:
+Publish to Hugging Face (with redactions based on the license):
 
 ```bash
-conjectures-arxiv upload-s3 \
-  --db-path data/conjectures.sqlite \
-  --exports-dir data/exports \
-  --bucket conjectures-arxiv-math-067542072602 \
-  --prefix math-conjectures
-```
-
-Prepare a public Hugging Face snapshot with license-aware redaction:
-
-```bash
+export HF_TOKEN=...
 conjectures-arxiv export-hf \
   --db-path data/conjectures.sqlite \
   --output-dir data/huggingface_dataset \
   --repo-id your-org/conjectures-arxiv
 ```
 
-Dry-run the full Hugging Face publish pipeline without uploading:
-
 ```bash
-conjectures-arxiv publish-hf \
-  --db-path data/conjectures.sqlite \
-  --output-dir data/huggingface_dataset \
-  --repo-id your-org/conjectures-arxiv \
-  --dry-run
-```
-
-Publish to Hugging Face when ready:
-
-```bash
-export HF_TOKEN=...
 conjectures-arxiv publish-hf \
   --db-path data/conjectures.sqlite \
   --output-dir data/huggingface_dataset \
   --repo-id your-org/conjectures-arxiv
 ```
 
-## Hugging Face License Policy
-
-The public Hugging Face snapshot is intentionally aggressive by default:
-
-- If the paper license is missing or unrecognized, the conjecture text is still published.
-- If the license is clearly restrictive for broad republication, the conjecture text is withheld and only paper references are published.
-- This Hugging Face release is treated as a noncommercial release, so `CC BY-NC*` papers are published.
-
-Current withhold rules:
-
-- arXiv non-exclusive distribution license (`arxiv.org/licenses/nonexclusive-distrib/1.0/`)
-
-The generated snapshot includes per-record decision fields like `publication_decision`, `publication_text_reason`, and `publication_policy_version`, plus a `publication_manifest.json` summary.
-The conjecture rows also include the newest available LLM label metadata per conjecture, including the latest label, confidence, interestingness score, and viability score.
-
 ## Current Snapshot
 
-Latest local labeled dataset:
-
-- `data/conjectures_month_live_20260306.sqlite`
-- `data/exports_month_live_20260306/conjectures.jsonl`
-- `data/exports_month_live_20260306/conjectures.csv`
-- `data/exports_month_live_20260306/papers.jsonl`
-- `data/exports_month_live_20260306/real_conjectures_gpt-5-mini.jsonl`
-- `data/exports_month_live_20260306/real_conjectures_gpt-5-mini.csv`
+Latest labeled datasets can be found in `data/exports_month_live_20260306/*`
 
 Current totals:
 
@@ -173,10 +118,6 @@ Current totals:
 - `not_real_conjecture=119`
 - `uncertain=3`
 - `published_at_range=2026-02-02..2026-03-04`
-
-Latest S3 location:
-
-- `s3://conjectures-arxiv-math-067542072602/math-conjectures/latest/`
 
 ## Current Solver Pilot
 
@@ -194,9 +135,7 @@ These are model-reported results, not independently verified mathematical proofs
 Artifacts:
 
 - [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md)
-- [solver_attempts_20_summary.csv](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv)
 - [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md)
-- [solver_attempts_20.jsonl](data/exports_solver_status_20260309_attempts20/solver_attempts_20.jsonl)
 - [solver_attempts_20.csv](data/exports_solver_status_20260309_attempts20/solver_attempts_20.csv)
 
 ## Project Layout
