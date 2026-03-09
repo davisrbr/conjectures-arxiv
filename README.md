@@ -21,6 +21,13 @@ This project ingests recent `math*` arXiv papers, extracts conjecture blocks fro
 - Retries malformed batch responses per item to avoid parser-artifact labels.
 - Exports JSONL/CSV and uploads to S3.
 
+## Initial Solver Results
+
+- In an initial 11-attempt GPT-5.4 solver pilot on the highest-viability conjectures, the model claimed 5 clean exact-statement resolutions: 1 confirmation and 4 disconfirmations.
+- It also produced 2 additional "resolved in substance" outcomes, 1 partial-progress outcome, and 3 unresolved outcomes.
+- These are model-reported results, not independently verified mathematical proofs or counterexamples.
+- See `data/exports_solver_status_20260309_attempts11/solver_attempts_11_summary.md` and `data/exports_solver_status_20260309_attempts11/solver_attempts_11_summary.csv`.
+
 ## Quick Start
 
 ```bash
