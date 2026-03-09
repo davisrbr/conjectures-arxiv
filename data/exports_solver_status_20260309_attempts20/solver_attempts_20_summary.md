@@ -2,7 +2,7 @@
 
 Included attempts: 20 completed solver attempts in the corrected combined audit set.
 
-Note: bolded attempt numbers, conjecture numbers, and paper titles mark the six strongest settlement-quality results identified in [solver_attempts_20_audit.md](solver_attempts_20_audit.md).
+We bold the six strongest results (identified in [solver_attempts_20_audit.md](solver_attempts_20_audit.md)).
 
 | Attempt | Conj. | Paper | Authors / Affiliations | Conjecture Summary | Verdict | Literature Overlap | Full Solution |
 | --- | --- | --- | --- | --- | --- | --- | --- |
