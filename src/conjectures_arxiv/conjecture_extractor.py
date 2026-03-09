@@ -21,6 +21,32 @@ NAME_OPTION_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 IFFALSE_TOKEN_PATTERN = re.compile(r"\\if(?:false|0)\b|\\fi\b", flags=re.IGNORECASE)
+STYLE_COMMAND_PATTERN = re.compile(r"\\color\*?(\[[^\]]*\])?\{[^{}]*\}", flags=re.IGNORECASE)
+LIST_ENV_PATTERN = re.compile(r"\\(?:begin|end)\{(?:enumerate|itemize|description)\}", flags=re.IGNORECASE)
+LINEBREAK_PATTERN = re.compile(r"\\\\")
+COMMAND_TOKEN_REPLACEMENTS = {
+    "left": "",
+    "right": "",
+    "in": " in ",
+    "to": " to ",
+    "mapsto": " maps to ",
+    "subset": " subset ",
+    "subseteq": " subseteq ",
+    "supset": " supset ",
+    "supseteq": " supseteq ",
+    "cup": " cup ",
+    "cap": " cap ",
+    "times": " x ",
+    "cdot": " * ",
+    "leq": " <= ",
+    "le": " <= ",
+    "geq": " >= ",
+    "ge": " >= ",
+    "neq": " != ",
+    "approx": " approx ",
+    "sim": " sim ",
+    "ell": " ell ",
+}
 
 
 @dataclass(frozen=True)
@@ -218,9 +244,19 @@ def _blank_range_preserve_newlines(chars: list[str], start: int, end: int) -> No
 def latex_to_plain_text(text: str) -> str:
     no_comments = re.sub(r"(?<!\\)%.*", "", text)
     no_labels = re.sub(r"\\(label|ref|eqref|cite|url|footnote)\*?(\[[^\]]*\])?\{[^{}]*\}", "", no_comments)
+    no_style = STYLE_COMMAND_PATTERN.sub("", no_labels)
+    no_list_env = LIST_ENV_PATTERN.sub(" ", no_style)
+    itemized = re.sub(r"\\item\b", " ", no_list_env)
+    linebroken = LINEBREAK_PATTERN.sub(" ", itemized)
+    unspaced = linebroken.replace("~", " ")
+
+    token_normalized = unspaced
+    for command, replacement in COMMAND_TOKEN_REPLACEMENTS.items():
+        token_normalized = re.sub(rf"\\{command}\b", replacement, token_normalized)
+    token_normalized = token_normalized.replace(r"\{", "{").replace(r"\}", "}")
 
     # Keep common formatting-command bodies while dropping command names.
-    keep_body_commands = re.sub(r"\\[a-zA-Z]+\*?\{([^{}]*)\}", r"\1", no_labels)
+    keep_body_commands = re.sub(r"\\[a-zA-Z]+\*?\{([^{}]*)\}", r"\1", token_normalized)
     no_remaining_commands = re.sub(r"\\[a-zA-Z]+\*?(\[[^\]]*\])?", "", keep_body_commands)
     no_braces = no_remaining_commands.replace("{", " ").replace("}", " ")
 
