@@ -20,6 +20,9 @@ dev = [
 parquet = [
   "pyarrow>=16.0.0",
 ]
+huggingface = [
+  "huggingface_hub>=0.31.4",
+]
 llm = [
   "openai>=1.50.0",
 ]

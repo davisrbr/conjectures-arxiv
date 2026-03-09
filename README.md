@@ -7,11 +7,9 @@ In an initial pilot, GPT-5.4 Thinking (xhigh) tackled 20 high-viability conjectu
 ## Pipeline
 
 1. Ingest recent arXiv math papers over a date range or rolling weekly window.
-2. Download source from arXiv, resolve `\input` and `\include`, and remove inactive TeX regions such as `%` comments and `\iffalse ... \fi`.
-3. Extract conjecture-like blocks and store them with paper metadata in SQLite, including arXiv category, DOI, journal reference, comments, and license when available.
-4. Optionally label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for interestingness and near-term viability.
-5. Optionally run GPT-5.4 solver attempts, with web search enabled, on the highest-priority real conjectures.
-6. Export JSONL/CSV, optionally export Parquet, and optionally publish artifacts to S3.
+2. Extract conjectures and store them with paper metadata (including arXiv category, DOI, journal reference, comments, and license when available).
+3. Label the conjectures with gpt-5-mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for interestingness and near-term viability.
+4. Optionally run GPT-5.4 Thinking (xhigh) on the most tractable conjectures.
 
 ## Install
 
@@ -26,7 +24,9 @@ pip install -e '.[dev,llm]'
 Optional extras:
 
 - Add `parquet` if you want Parquet export support: `pip install -e '.[dev,llm,parquet]'`
+- Add `huggingface` if you want Hugging Face uploads: `pip install -e '.[dev,llm,huggingface]'`
 - Set `OPENAI_API_KEY` before running `filter-llm` or `solve-llm`
+- Set `HF_TOKEN` before running `publish-hf` unless you already have a cached Hugging Face login
 - Configure AWS credentials before running `upload-s3`
 
 ## Quick Start
@@ -108,6 +108,50 @@ conjectures-arxiv upload-s3 \
   --prefix math-conjectures
 ```
 
+Prepare a public Hugging Face snapshot with license-aware redaction:
+
+```bash
+conjectures-arxiv export-hf \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/huggingface_dataset \
+  --repo-id your-org/conjectures-arxiv
+```
+
+Dry-run the full Hugging Face publish pipeline without uploading:
+
+```bash
+conjectures-arxiv publish-hf \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/huggingface_dataset \
+  --repo-id your-org/conjectures-arxiv \
+  --dry-run
+```
+
+Publish to Hugging Face when ready:
+
+```bash
+export HF_TOKEN=...
+conjectures-arxiv publish-hf \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/huggingface_dataset \
+  --repo-id your-org/conjectures-arxiv
+```
+
+## Hugging Face License Policy
+
+The public Hugging Face snapshot is intentionally aggressive by default:
+
+- If the paper license is missing or unrecognized, the conjecture text is still published.
+- If the license is clearly restrictive for broad republication, the conjecture text is withheld and only paper references are published.
+- This Hugging Face release is treated as a noncommercial release, so `CC BY-NC*` papers are published.
+
+Current withhold rules:
+
+- arXiv non-exclusive distribution license (`arxiv.org/licenses/nonexclusive-distrib/1.0/`)
+
+The generated snapshot includes per-record decision fields like `publication_decision`, `publication_text_reason`, and `publication_policy_version`, plus a `publication_manifest.json` summary.
+The conjecture rows also include the newest available LLM label metadata per conjecture, including the latest label, confidence, interestingness score, and viability score.
+
 ## Current Snapshot
 
 Local canonical dataset:
@@ -175,6 +219,8 @@ Typical read-only permissions:
 - `src/conjectures_arxiv/llm_filter.py`: GPT-5 Mini labeling
 - `src/conjectures_arxiv/solver.py`: GPT-5.4 solver prompt and response handling
 - `src/conjectures_arxiv/database.py`: SQLite schema and exports
+- `src/conjectures_arxiv/license_policy.py`: publication license classification
+- `src/conjectures_arxiv/hf_publish.py`: Hugging Face dataset uploads
 - `src/conjectures_arxiv/s3_publish.py`: S3 publishing helpers
 
 ## Tests

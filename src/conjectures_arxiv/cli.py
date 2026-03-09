@@ -9,6 +9,7 @@ import time
 from typing import Callable
 
 from .database import Database
+from .hf_publish import HuggingFacePublisher
 from .llm_filter import GPT5MiniConjectureFilter, LLMFilterRunner, SourceContextProvider
 from .pipeline import IngestionPipeline
 from .s3_publish import S3Publisher
@@ -52,6 +53,12 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("--output-dir", default="data/exports")
     export_parser.add_argument("--with-parquet", action="store_true")
     export_parser.set_defaults(handler=cmd_export)
+
+    export_hf_parser = subparsers.add_parser("export-hf", help="Build a license-filtered Hugging Face dataset snapshot")
+    export_hf_parser.add_argument("--db-path", default="data/conjectures.sqlite")
+    export_hf_parser.add_argument("--output-dir", default="data/huggingface_dataset")
+    export_hf_parser.add_argument("--repo-id", default="")
+    export_hf_parser.set_defaults(handler=cmd_export_hf)
 
     upload_parser = subparsers.add_parser("upload-s3", help="Upload DB and export files to S3")
     upload_parser.add_argument("--db-path", default="data/conjectures.sqlite")
@@ -101,6 +108,17 @@ def build_parser() -> argparse.ArgumentParser:
     solve_status_parser.add_argument("--refresh-open", action="store_true")
     solve_status_parser.add_argument("--output-dir", default="")
     solve_status_parser.set_defaults(handler=cmd_solve_status)
+
+    publish_hf_parser = subparsers.add_parser("publish-hf", help="Build and optionally upload a Hugging Face dataset snapshot")
+    publish_hf_parser.add_argument("--db-path", default="data/conjectures.sqlite")
+    publish_hf_parser.add_argument("--output-dir", default="data/huggingface_dataset")
+    publish_hf_parser.add_argument("--repo-id", required=True)
+    publish_hf_parser.add_argument("--token", default="")
+    publish_hf_parser.add_argument("--private", action="store_true")
+    publish_hf_parser.add_argument("--revision", default="main")
+    publish_hf_parser.add_argument("--commit-message", default="")
+    publish_hf_parser.add_argument("--dry-run", action="store_true")
+    publish_hf_parser.set_defaults(handler=cmd_publish_hf)
 
     return parser
 
@@ -260,6 +278,18 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_hf(args: argparse.Namespace) -> int:
+    db = Database(args.db_path)
+    try:
+        db.init_schema()
+        exported = db.export_huggingface_dataset(args.output_dir, repo_id=args.repo_id)
+    finally:
+        db.close()
+
+    _print_hf_export_summary(exported)
+    return 0
+
+
 def cmd_upload_s3(args: argparse.Namespace) -> int:
     publisher = S3Publisher(bucket=args.bucket, prefix=args.prefix)
     if args.create_bucket:
@@ -269,6 +299,47 @@ def cmd_upload_s3(args: argparse.Namespace) -> int:
     for uri in uploaded:
         print(f"  - {uri}")
     return 0
+
+
+def cmd_publish_hf(args: argparse.Namespace) -> int:
+    db = Database(args.db_path)
+    try:
+        db.init_schema()
+        exported = db.export_huggingface_dataset(args.output_dir, repo_id=args.repo_id)
+    finally:
+        db.close()
+
+    _print_hf_export_summary(exported)
+    if args.dry_run:
+        print(f"Dry run: dataset snapshot prepared for https://huggingface.co/datasets/{args.repo_id}")
+        return 0
+
+    publisher = HuggingFacePublisher(token=args.token or None)
+    url = publisher.upload_dataset(
+        dataset_dir=Path(args.output_dir),
+        repo_id=args.repo_id,
+        private=args.private,
+        revision=args.revision,
+        commit_message=args.commit_message,
+    )
+    print(f"Uploaded dataset snapshot: {url}")
+    return 0
+
+
+def _print_hf_export_summary(exported: dict[str, Path]) -> None:
+    manifest = json.loads(exported["hf_manifest_json"].read_text(encoding="utf-8"))
+    print(
+        "Prepared Hugging Face dataset snapshot:",
+        f"papers={manifest['papers_total']}",
+        f"conjectures={manifest['conjectures_total']}",
+        f"published_text={manifest['conjectures_with_public_text']}",
+        f"withheld_text={manifest['conjectures_withheld_text']}",
+        f"latest_labels={manifest['conjectures_with_latest_label']}",
+        f"policy={manifest['publication_policy_version']}",
+    )
+    print("Prepared artifacts:")
+    for artifact in exported.values():
+        print(f"  - {artifact}")
 
 
 def cmd_filter_llm(args: argparse.Namespace) -> int:

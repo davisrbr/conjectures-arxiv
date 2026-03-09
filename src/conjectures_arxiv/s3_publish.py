@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import boto3
@@ -41,7 +41,7 @@ class S3Publisher:
         db_path = Path(db_path)
         exports_dir = Path(exports_dir)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         run_prefix = f"{self.prefix}runs/{timestamp}/"
         latest_prefix = f"{self.prefix}latest/"
 
