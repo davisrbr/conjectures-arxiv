@@ -1,0 +1,661 @@
+attempt_id,conjecture_id,response_id,status,output_text,sources_json,error_json,created_at,completed_at,arxiv_id,title,authors_json,abs_url,pdf_url,source_url,source_file,start_line,end_line,body_tex,plain_text,viability_score,interestingness_score,authors
+2,152,resp_0a54f6aebbc34b3e0069adf48f400481969149da2575350831,completed,"Verdict
+
+Disconfirm.
+
+A concrete counterexample exists for p = 2. The stated assumptions do not force the projected one-dimensional laws u#P and u#Q to satisfy the J_p-integrability condition that the paper itself identifies as the real obstacle for p > 1. In fact, one can choose a rank-1 kernel so that e-KQD_2 becomes exactly the ordinary one-dimensional W_2 between empirical Gaussian laws, and then the claimed N^{-1/2} rate fails by a log-log factor. This is compatible with the paper’s own proof sketch, which says one “will need to show” E_{u∼γ} J_p(u#P) < ∞, but does not derive that from the conjecture’s hypotheses. ([discovery.ucl.ac.uk](https://discovery.ucl.ac.uk/id/eprint/10211533/1/2505.20433v1.pdf))
+
+Well-specifiedness
+
+The conjecture is not fully well-specified as written. The symbols γ and γ_L are not defined in the extracted statement, and the expectation is only over x_1,…,x_N,y_1,…,y_N even though the L^{-1/2} term comes from Monte Carlo sampling of projections u_1,…,u_L from γ. In the surrounding paper, γ_L is the empirical measure of L sampled directions, and γ is a measure on the RKHS unit sphere; that dependence is essential. ([mashanaslidnyk.github.io](https://mashanaslidnyk.github.io/assets/pdf/kqe.pdf))
+
+More importantly, the paper’s own sketch for p > 1 says the key missing step is proving E_{u∼γ}J_p(u#P) < ∞, where J_p is the Bobkov–Ledoux quantity controlling one-dimensional empirical W_p rates. That condition is not implied by the conjecture’s stated assumptions (lower bounds on f_P,f_Q and a moment assumption on k(X,X)). So even before the counterexample, the hypotheses were already too weak for the proposed proof strategy. ([discovery.ucl.ac.uk](https://discovery.ucl.ac.uk/id/eprint/10211533/1/2505.20433v1.pdf))
+
+Reasoning
+
+Take
+X = [0,1],
+P = Q = Unif[0,1],
+ν = Lebesgue measure on [0,1],
+p = 2,
+u(x) = Φ^{-1}(x),
+where Φ is the standard normal CDF.
+
+Now define the rank-1 kernel
+k(x,y) = u(x)u(y).
+Its RKHS is one-dimensional, spanned by u, and u has RKHS norm 1. Also
+E_P[k(X,X)] = E[(Φ^{-1}(X))^2] = 1 < ∞,
+so the conjecture’s moment assumption holds. Since P and Q are uniform on [0,1], their densities are bounded away from zero. ([mashanaslidnyk.github.io](https://mashanaslidnyk.github.io/assets/pdf/kqe.pdf))
+
+Choose γ = δ_u. Then γ_L = γ for every L, so the Monte Carlo error is identically zero. Because the RKHS is one-dimensional and ν is Lebesgue, the definition of τ_2/e-KQD reduces exactly to the usual one-dimensional W_2 between the pushforward laws under u. Since u#P = u#Q = N(0,1), the population discrepancy is
+e-KQD_2(P,Q;ν,γ) = W_2(N(0,1),N(0,1)) = 0,
+while the empirical discrepancy is
+e-KQD_2(P_N,Q_N;ν,γ) = W_2(\hat N_N,\hat N'_N),
+with \hat N_N,\hat N'_N the empirical laws of two independent N(0,1) samples. This reduction follows directly from the paper’s definitions of τ_p and e-KQD. ([mashanaslidnyk.github.io](https://mashanaslidnyk.github.io/assets/pdf/kqe.pdf))
+
+So the conjecture would imply
+E W_2(\hat N_N,\hat N'_N) = O(N^{-1/2}).
+I will show this is false.
+
+Write Z_(j), Z'_(j) for the order statistics of the two independent Gaussian samples. Then
+W_2^2(\hat N_N,\hat N'_N) = (1/N) Σ_{j=1}^N (Z_(j)-Z'_(j))^2,
+hence
+E W_2^2(\hat N_N,\hat N'_N) = (2/N) Σ_{j=1}^N Var(Z_(j)).
+Now Z_(j) = q(U_(j)) with q = Φ^{-1} and U_(j) the jth uniform order statistic, U_(j) ~ Beta(j, N+1-j). For t_j = j/(N+1),
+Var(U_(j)) = j(N+1-j)/((N+1)^2(N+2)) ≍ t_j(1-t_j)/N.
+Using the mean value theorem and standard subgaussian concentration of order statistics around t_j, one gets
+Var(Z_(j)) ≍ q'(t_j)^2 Var(U_(j))
+for j away from the extreme edge; here q'(t)=1/φ(q(t)), with φ the standard normal density. Bobkov–Ledoux’s beta/order-statistics estimates are exactly the tools used in their one-dimensional W_p analysis. ([www-users.cse.umn.edu](https://www-users.cse.umn.edu/~bobko001/preprints/2016_BL_Order.statistics_Revised.version.pdf))
+
+Near t = 0, Mills’ ratio gives
+φ(q(t)) ≍ t sqrt(log(1/t)),
+so
+q'(t)^2 t(1-t)/N ≍ 1 / (N t log(1/t)).
+Therefore
+E W_2^2(\hat N_N,\hat N'_N)
+≳ (1/N) ∫_{1/N}^{1/2} dt / (t log(1/t))
+≍ (log log N)/N.
+Taking square roots,
+E W_2(\hat N_N,\hat N'_N) ≳ sqrt((log log N)/N),
+which is not O(N^{-1/2}). This contradicts the conjecture. The same tail mechanism is consistent with Bobkov–Ledoux’s Gaussian bounds and with Berthet–Fort’s exact Gaussian one-sample W_2 rate. ([www-users.cse.umn.edu](https://www-users.cse.umn.edu/~bobko001/preprints/2016_BL_Order.statistics_Revised.version.pdf))
+
+So the exact conjecture fails already in this rank-1-kernel example. Conceptually, the failure occurs because the hypotheses allow a projection u whose pushforward law is Gaussian, and for p = 2 the Gaussian law has J_2 = ∞; Bobkov–Ledoux show that finiteness of J_p is exactly what governs the standard n^{-1/2} one-dimensional W_p rate. ([www-users.cse.umn.edu](https://www-users.cse.umn.edu/~bobko001/preprints/2016_BL_Order.statistics_Revised.version.pdf))
+
+Literature overlap
+
+The exact conjecture is already essentially in the literature: it appears almost verbatim as Conjecture 1 in Naslidnyk et al., “Kernel Quantile Embeddings and Associated Probability Metrics” (2025), Appendix C.5, with the same proof sketch based on reducing to Bobkov–Ledoux and then needing to prove E_{u∼γ}J_p(u#P) < ∞. So the conjectural statement itself is category (a): nearly exact in the literature. ([discovery.ucl.ac.uk](https://discovery.ucl.ac.uk/id/eprint/10211533/1/2505.20433v1.pdf))
+
+The disproof above is, as far as I could verify, not already written down in that exact kernelized form. But it is very close to existing literature: it is assembled from (i) the KQD definitions/reduction to one-dimensional projected Wasserstein, (ii) Bobkov–Ledoux’s necessary-and-sufficient J_p criterion for the standard n^{-1/2} one-dimensional W_p rate, and (iii) the known anomalous Gaussian W_2 rate. So the negative result is best classified as (b): a close version exists in the literature, while this exact counterexample seems to be a new synthesis rather than a verbatim published theorem. ([mashanaslidnyk.github.io](https://mashanaslidnyk.github.io/assets/pdf/kqe.pdf))
+
+If one wanted a plausible corrected theorem, it would need at least an explicit assumption like
+E_{u∼γ}J_p(u#P) < ∞ and E_{u∼γ}J_p(u#Q) < ∞,
+plus a precise definition of the projection randomness in γ_L. That corrected form would be much closer to the Bobkov–Ledoux theory and to the proof sketch already in the paper. ([discovery.ucl.ac.uk](https://discovery.ucl.ac.uk/id/eprint/10211533/1/2505.20433v1.pdf))
+
+Sources
+
+Naslidnyk, “Scalable Kernel-Based Distances for Statistical Inference and Integration” (arXiv:2602.21846), thesis abstract page and the conjecture context in the PDF excerpt. ([arxiv.org](https://arxiv.org/abs/2602.21846))
+
+Naslidnyk et al., “Kernel Quantile Embeddings and Associated Probability Metrics” (PMLR 2025 / PDF mirror), containing the same theorem for p=1, the definitions of τ_p and e-KQD, and essentially the same p>1 conjecture/proof sketch. ([mashanaslidnyk.github.io](https://mashanaslidnyk.github.io/assets/pdf/kqe.pdf))
+
+Bobkov and Ledoux, “One-Dimensional Empirical Measures, Order Statistics, and Kantorovich Transport Distances,” especially Theorem 5.3 (upper bound via J_p), the necessity of J_p < ∞ for the standard rate, and Corollary 6.14 for Gaussian W_2. ([www-users.cse.umn.edu](https://www-users.cse.umn.edu/~bobko001/preprints/2016_BL_Order.statistics_Revised.version.pdf))
+
+Berthet and Fort, “Exact rate of convergence of the mean Wasserstein distance between the empirical and true Gaussian distribution,” giving the exact Gaussian W_2 rate sqrt((log log n)/n). ([arxiv.org](https://arxiv.org/abs/2001.09817))
+
+Rippl, Munk, and Sturm, “Limit laws of the empirical Wasserstein distance: Gaussian distributions,” for the general distinction between the null/same-distribution regime and the non-null/different-distribution regime in one-dimensional Wasserstein asymptotics. ([ar5iv.org](https://ar5iv.org/pdf/1507.04090))","[{""kind"": ""output_citation"", ""title"": ""Kernel Quantile Embeddings and Associated Probability Metrics"", ""url"": ""https://discovery.ucl.ac.uk/id/eprint/10211533/1/2505.20433v1.pdf""}, {""kind"": ""output_citation"", ""title"": ""Kernel Quantile Embeddings and Associated Probability Metrics"", ""url"": ""https://mashanaslidnyk.github.io/assets/pdf/kqe.pdf""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://www-users.cse.umn.edu/~bobko001/preprints/2016_BL_Order.statistics_Revised.version.pdf""}, {""kind"": ""output_citation"", ""title"": ""[2602.21846] Scalable Kernel-Based Distances for Statistical Inference and Integration"", ""url"": ""https://arxiv.org/abs/2602.21846""}, {""kind"": ""output_citation"", ""title"": ""[2001.09817] Exact rate of convergence of the mean Wasserstein distance between the empirical and true Gaussian distribution"", ""url"": ""https://arxiv.org/abs/2001.09817""}, {""kind"": ""output_citation"", ""title"": ""[1507.04090] Limit laws of the empirical Wasserstein distance: Gaussian distributions"", ""url"": ""https://ar5iv.org/pdf/1507.04090""}]",,2026-03-08T22:13:36Z,2026-03-08T22:20:50Z,2602.21846v1,Scalable Kernel-Based Distances for Statistical Inference and Integration,"[""Masha Naslidnyk""]",http://arxiv.org/abs/2602.21846v1,https://arxiv.org/pdf/2602.21846v1,https://arxiv.org/e-print/2602.21846v1,main.tex,6088,6095,"\label{res:consistency_KQD_p}
+    Let $\calX \subseteq \bR^d$, $\nu$ have a density, $\bP, \bQ$ be measures on $\calX$ with densities bounded away from zero, $f_\bP(x) \geq c_\bP>0$ and $f_\bQ(x) \geq c_\bQ>0$. Suppose $\bE_{X \sim \bP} [k(X, X)^{\nicefrac{p}{2}}]<\infty$ and $\bE_{Y \sim \bQ} [ k(Y, Y)^{\nicefrac{p}{2}}]<\infty$, and $x_1, \dots, x_N \sim \bP, y_1, \dots, y_N \sim \bQ$. Then,
+ 
+    \begin{align*}
+        \bE_{\substack{x_1, \dots, x_N \sim \bP \\ y_1, \dots, y_N \sim \bQ}}| \ekqd_p(\bP_N, \bQ_N;\nu, \gamma_L) - \ekqd_p(\bP, \bQ;\nu, \gamma) | =\bigo(L^{-\nicefrac{1}{2}} + N^{-\nicefrac{1}{2}}).
+    \end{align*}","Let $ ^d$, $$ have a density, $, $ be measures on $$ with densities bounded away from zero, $f_(x) c_>0$ and $f_(x) c_>0$. Suppose $_ X [k(X, X)^ p 2 ]<$ and $_ Y [ k(Y, Y)^ p 2 ]<$, and $x_1, , x_N , y_1, , y_N $. Then, align* _ x_1, , x_N \\ y_1, , y_N | _p(_N, _N;, _L) - _p(, ;, ) | =(L^ -1 2 + N^ -1 2 ). align*",0.75,0.4,Masha Naslidnyk
+3,368,resp_02eab29348bda58a0069adf9c2427081958b5574883e3fb82c,completed,"Verdict
+
+Disconfirmed as written.
+
+Let m denote the even integer from Assumption 5.1, and let φ be the test function (the paper uses h for both, which is itself ambiguous). Take φ(y)=|y|, which belongs to Lip_1(R). If there were a solution g with classical derivatives g', g'', g''' satisfying
+φ(y) - E[φ(Z)] = - y^m g'(y) + E[ξ_k^2] g''(y),
+then the right-hand side would be differentiable at y=0, while |y|-E|Z| is not differentiable at 0. So no such g can exist. This already refutes the exact conjecture. The paper’s own appendix also uses a different Stein operator and different target density, so the displayed conjecture appears typo-contaminated as well. ([arxiv.org](https://arxiv.org/pdf/2602.13960v1))
+
+Well-specifiedness
+
+The conjecture is poorly specified.
+
+First, the symbol h is overloaded: in Section 5 it denotes both the even integer order from Assumption 5.1 and the Lipschitz test function in Conjecture 5.2. Second, Z is not defined inside the conjecture itself; the nearby text suggests it is meant to be the target Gibbs law. Third, the operator/density pair is internally inconsistent: the conjecture states -y^m g' + E[ξ_k^2]g'', the next sentence associates this with the diffusion dY_t=-Y_t^m dt+sqrt(2E[ξ_k^2])dW_t and a density proportional to exp{-|y|^{m+1}/((m+1)E[ξ_k^2])}, while Appendix E instead uses -f^{(m)}(x*)/(m-1)! y^{m-1}g' + (σ^2/2)g'' and Proposition 5.1 targets a Gibbs density proportional to exp(-c y^m). Finally, the conjecture never says whether g''' is meant classically, almost everywhere, or weakly; that distinction is decisive here. ([arxiv.org](https://arxiv.org/pdf/2602.13960v1))
+
+Reasoning
+
+The counterexample is simple. Let
+F(y) := - y^m g'(y) + σ^2 g''(y),
+with σ^2 := E[ξ_k^2]. If g', g'', g''' exist classically, then F is differentiable at every y. In particular, since m>=2,
+F'(0) = σ^2 g'''(0).
+So if the Stein equation held with φ(y)=|y|, then |y|-E|Z| would be differentiable at 0, contradiction. Hence the conjecture is false even before worrying about uniform bounds.
+
+This same regularity obstruction also kills the natural corrected operator from the appendix:
+Lg(y) = -κ y^{m-1} g'(y) + (σ^2/2) g''(y).
+With classical g''', Lg is still differentiable, so one still cannot solve Lg = φ - Eφ(Z) for every merely Lipschitz φ. Thus the problem is not only the power typo; the demanded regularity is too strong for the Wasserstein test class.
+
+There is also an independent structural mismatch in the paper. As written, the diffusion dY_t=-Y_t^m dt+sqrt(2σ^2)dW_t does not match the claimed invariant density with |y|^{m+1} in the exponent. For constant diffusion coefficient, the formal zero-flux density for drift -y^m is proportional to exp(-y^{m+1}/((m+1)σ^2)), which is not normalizable when m is even. By contrast, Appendix E uses the generator
+Lg(y)= -f^{(m)}(x*)/(m-1)! y^{m-1} g'(y) + (σ^2/2) g''(y),
+which does match the Gibbs density p(y)∝exp(-c y^m) appearing in Proposition 5.1. So the written conjecture is not just unproved; it is inconsistent with the rest of the paper. ([arxiv.org](https://arxiv.org/pdf/2602.13960v1))
+
+A sensible repair would be: use the appendix operator, and either weaken the regularity claim to bounded g' and g'' (or bounded weak third derivative), or strengthen the test class from Lip_1 to something like C^{1,1}. For the repaired 1D Gibbs target, the standard 1D Stein machinery does provide an explicit integral solution formula via the inverse Stein operator, and later work gives strong or weak Stein-factor results under additional diffusion/Poincaré assumptions. I am not claiming a full proof of that repaired variant here; only that the right framework is already available. What definitely fails is the exact classical g''' claim for all Lipschitz tests. ([arxiv.org](https://arxiv.org/pdf/1408.2998))
+
+Literature overlap
+
+For the exact conjecture as written: no. It is false, so there is no exact positive result to locate in the literature.
+
+For nearby corrected statements: best classified as (b) close to existing literature. Ley, Reinert, and Swan give the general one-dimensional inverse Stein operator, which yields the explicit integral representation underlying corrected Gibbs Stein equations. Mijoule, Raič, Reinert, and Swan summarize that, under stronger diffusion assumptions, the corresponding strong Stein equation for Lipschitz test functions has a twice continuously differentiable solution with Stein-factor bounds; they also prove a weak Stein equation for Lipschitz tests under a Poincaré constant. These are close in spirit, but they are not the same as the paper’s written claim, and they do not rescue the classical third-derivative bound for every Lipschitz test function. ([arxiv.org](https://arxiv.org/pdf/1408.2998))
+
+So my classification is:
+- exact conjecture: false;
+- natural corrected operator: close to known 1D Stein machinery;
+- natural corrected regularity claim: should be reformulated, because “classical bounded g''' for all h∈Lip_1” is too strong, whereas “bounded g', g''” or “bounded weak third derivative” is much more plausible and much closer to what is already known. Higher-order Stein-factor bounds are typically tied to smoothness of the test function itself. ([arxiv.org](https://arxiv.org/abs/1510.02623?utm_source=openai))
+
+Sources
+
+Wang, Wang, Narang, F. Wang, Y. Wang, Maguluri, arXiv:2602.13960v1: Conjecture 5.2 as stated, its surrounding diffusion interpretation, Proposition 5.1 target density, and Appendix E’s actual generator. ([arxiv.org](https://arxiv.org/pdf/2602.13960v1))
+
+Ley, Reinert, Swan, “Stein’s method for comparison of univariate distributions” (2017): canonical inverse Stein operator / explicit 1D solution formula. ([arxiv.org](https://arxiv.org/pdf/1408.2998))
+
+Mijoule, Raič, Reinert, Swan, “Stein’s density method for multivariate continuous distributions” (2023): strong diffusion Stein-factor results under stronger assumptions and weak Stein equations under a Poincaré condition. ([arxiv.org](https://arxiv.org/pdf/2101.05079))
+
+Döbler, “An iterative technique for bounding derivatives of solutions of Stein equations”: higher-order derivative bounds in Stein’s method are formulated in terms of smoothness of the test function. ([arxiv.org](https://arxiv.org/abs/1510.02623?utm_source=openai))","[{""kind"": ""output_citation"", ""title"": ""Steady-State Behavior of Constant-Stepsize Stochastic Approximation: Gaussian Approximation and Tail Bounds"", ""url"": ""https://arxiv.org/pdf/2602.13960v1""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://arxiv.org/pdf/1408.2998""}, {""kind"": ""output_citation"", ""title"": ""An iterative technique for bounding derivatives of solutions of Stein equations"", ""url"": ""https://arxiv.org/abs/1510.02623?utm_source=openai""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://arxiv.org/pdf/2101.05079""}]",,2026-03-08T22:35:47Z,2026-03-08T22:43:27Z,2602.13960v1,Steady-State Behavior of Constant-Stepsize Stochastic Approximation: Gaussian Approximation and Tail Bounds,"[""Zedong Wang"", ""Yuyang Wang"", ""Ijay Narang"", ""Felix Wang"", ""Yuzhou Wang"", ""Siva Theja Maguluri""]",http://arxiv.org/abs/2602.13960v1,https://arxiv.org/pdf/2602.13960v1,https://arxiv.org/e-print/2602.13960v1,Arxiv_Version.tex,797,804,"\label{conj2:generalSGD}
+  For any $h \in \operatorname{Lip}_1(\mathbb{R})$, the Stein equation
+  \begin{equation}\label{generalSGD}
+    h(y) - \mathbb{E}[h(Z)] = -y^h g_h'(y) + \mathbb{E}[\xi_k^{2}] g_h''(y)
+  \end{equation}
+  admits a solution $g_h:\mathbb{R}\to\mathbb{R}$ with uniformly bounded derivatives: $\sup_{y\in\mathbb{R}}(|g_h'(y)| + |g_h''(y)| + |g_h'''(y)|) < R$ for some constant $R$.","For any $h Lip_1(R)$, the Stein equation equation h(y) - E[h(Z)] = -y^h g_h'(y) + E[_k^ 2 ] g_h''(y) equation admits a solution $g_h:R$ with uniformly bounded derivatives: $_ y (|g_h'(y)| + |g_h''(y)| + |g_h'''(y)|) < R$ for some constant $R$.",0.85,0.35,Zedong Wang; Yuyang Wang; Ijay Narang; Felix Wang; Yuzhou Wang; Siva Theja Maguluri
+4,483,resp_0fb0a8e78d50d5d30069adf9c32b9c819695dc5ce6f48fd7af,completed,"Verdict
+
+Disconfirm as literally written, but confirm the intended mathematical content. The draft text is not a single precise conjecture; its substantive question is whether the positive level-1 quadratic case N=15 is still “unaccounted for” or is actually related to known Ramanujan-type series. In the current arXiv v1, N=15 is already accounted for: Theorem 7.2 relates the positive level-1 N=15 series to the positive level-3 N=5 series, and Theorem 9.1 says all level-4 series, including Ramanujan’s quadratic N=15 series, are deduced from the corresponding level-1 series. So N=15 is not an outstanding exception. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Well-specifiedness
+
+This is poorly specified. The excerpt is from a draft “old stuff” section, uses obsolete internal labels (Conjectures 1.1–1.3, Tables 1.1/4.1/5.1, Theorem 5.1.2), and the phrase “related to” is undefined. It also mixes an implication with two informal questions, so it is not a single proposition with a clean truth value. The most workable interpretation is: does the positive level-1 quadratic series with N=15 belong to the same transformation network as previously known Ramanujan-type series? Under that interpretation, yes. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Reasoning
+
+In the current numbering of v1, the positive level-1 series are in Table 5, while Ramanujan’s unique quadratic irrational formula is identified as the level-4 entry Table 11, N=15. The introduction explicitly says Ramanujan’s 17 series occur in Tables 5, 7, 8, 9, and 11, and that the quadratic irrational one is Table 11, N=15. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+The key point is Theorem 9.1 with ℓ=1. It gives the quadratic transformation
+F4(x) = (1 - 16x)^(-1/2) F1(x^2/(1 - 16x)^3),
+together with X1(q^2) = X4(q)^2/(1 - 16X4(q))^3. Immediately after stating this, the paper says that all level-4 series in Table 11 can be deduced from the corresponding level-1 series in Table 5. Therefore, evaluating at the CM point N=15 links the Table 11, N=15 Ramanujan series directly to the Table 5, N=15 level-1 quadratic series. So the first draft question has an affirmative answer. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+There is also an independent route. Theorem 7.2 states that the positive level-1 quadratic series with N=15 is obtained from the ℓ=3 transformation of Theorem 7.1 using the positive level-3 series in Table 9 with N=5. Since Table 9, N=5 is one of Ramanujan’s original rational series, the supposedly exceptional N=15 case is already absorbed into the paper’s transformation web even before using the level-4 link. Hence the draft phrase “except for N=15” is superseded by later results in the same paper. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+I am not claiming here an independent verification of the draft’s more specific route through the level-5, N=3 series. That route may well be true, but it is unnecessary for settling the substantive issue, because N=15 is already accounted for by the verified level-1↔level-3 and level-1↔level-4 transformations above.
+
+Literature overlap
+
+Category (a): nearly exact in the literature. The exact resolution of this draft leftover is already essentially contained in the same arXiv paper under discussion. Theorem 7.2 accounts for the positive level-1 N=15 case via level 3, and Theorem 9.1 shows that all level-4 series—including Ramanujan’s N=15 series—are deduced from the corresponding level-1 series. So as a mathematical claim, this draft conjectural note is already settled in v1. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Category (b): close antecedents definitely exist. The paper explicitly says that the transformations behind Theorem 7.1 were proved earlier for ℓ=3,7,11, are equivalent to earlier formulas for ℓ=2 and 5, and that Theorem 9.1 continues a family of identities studied by the Borweins and by Baruah–Berndt and further generalized in [63]. So the mechanism is not new; what is specific here is the bookkeeping/classification application to this N=15 draft question. Accordingly, this is not category (c) “relatively novel” as an exact result. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Sources
+
+Primary source: Campbell, Cooper, and Ye, “Quadratic irrational analogues of Ramanujan’s series for 1/π”, arXiv:2602.09352v1. The key places used above were the introduction’s identification of Ramanujan’s tables, Theorem 7.2, Theorem 9.1 and its level-4 corollary, and the table entries around N=15. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))","[{""kind"": ""output_citation"", ""title"": ""Quadratic irrational analogues of Ramanujan's series for $1/\\pi$"", ""url"": ""https://arxiv.org/pdf/2602.09352v1""}]",,2026-03-08T22:35:47Z,2026-03-08T22:43:07Z,2602.09352v1,Quadratic irrational analogues of Ramanujan's series for $1/π$,"[""John M. Campbell"", ""Shaun Cooper"", ""Dongxi Ye""]",http://arxiv.org/abs/2602.09352v1,https://arxiv.org/pdf/2602.09352v1,https://arxiv.org/e-print/2602.09352v1,QuadraticArXiv_1.tex,6588,6594,"If Conjectures \ref{C:1.1}--\ref{C:1.3} are true, then that accounts for all quadratic series in Table~\ref{T:1.1} except for $N=15$. 
+\begin{enumerate}
+\item Is it related to Ramanujan's series $N=15$ in Table~\ref{T:4.1}?
+\item Is it related to the level~5 series $N=3$ in~Table~\ref{T:5.1}? {\color{blue}{True by Theorem~\ref{Th:5.1.2}}}.
+\end{enumerate}","If Conjectures -- are true, then that accounts for all quadratic series in Table~ except for $N=15$. enumerate Is it related to Ramanujan's series $N=15$ in Table~? Is it related to the level~5 series $N=3$ in~Table~? blue True by Theorem~ . enumerate",0.85,0.35,John M. Campbell; Shaun Cooper; Dongxi Ye
+5,316,resp_087da05a88d418bf0069adf9c3f56c81a1a5abede26b734ff6,completed,"Verdict
+
+As of March 8, 2026, I cannot confirm or disconfirm Conjecture 316. The newest paper I found, Pham–Sauermann (arXiv:2602.15797v1), proves the conjecture for every fixed \(0<\alpha<1\) in the range \(C_\alpha \le |S| \le p^{1-\alpha}\); combined with Bedert–Bucić–Kravitz–Montgomery–Müyesser’s general large-subset theorem \(|S|\ge |G|^{1-c}\), this yields Graham’s conjecture for all sufficiently large primes, but not the exact all-primes statement. I found no source giving a full proof or a counterexample for the exact formulation. ([arxiv.org](https://arxiv.org/pdf/2602.15797v1))
+
+Well-specifiedness
+
+In the paper, the conjecture is well specified once one includes the immediately preceding definition: a valid ordering is an ordering whose partial sums are pairwise distinct. The only mild caveat is that the isolated sentence “Any subset \(S\subseteq \mathbb Z_p\setminus\{0\}\) admits a valid ordering” is not self-contained unless that nearby definition is included, and the symbol \(\su\) relies on the paper’s notation setup. With that local context, the statement is precise. ([arxiv.org](https://arxiv.org/pdf/2602.15797v1))
+
+Reasoning
+
+A standard reduction already in the literature is that Alspach’s stronger nonzero-sum conjecture implies Graham’s conjecture in cyclic groups: if a set has total sum \(0\), delete one element, apply Alspach to the remaining nonzero-sum set, then append the deleted element. So one natural route to Conjecture 316 would be to prove the prime-order case of Alspach’s conjecture. ([cs.uwaterloo.ca](https://cs.uwaterloo.ca/~dstinson/papers/J256.pdf))
+
+Among the exact results I found, Graham’s conjecture is verified for all cyclic groups of order at most \(25\) by computation, and for prime cyclic groups of subset-size \(12\) (building on earlier exact results up to \(11\)). Later work greatly enlarges the proved ranges: Kravitz proved \(|S|\le \log p/\log\log p\) and also the integer analogue “every finite subset of \(\mathbb Z\setminus\{0\}\) has a valid ordering”; Bedert–Kravitz improved the prime-field small-set range to \(|S|\le e^{(\log p)^{1/4}}\); Bedert–Bucić–Kravitz–Montgomery–Müyesser proved a general theorem for \(|S|\ge |G|^{1-c}\); and Pham–Sauermann proved the intermediate regime \(C_\alpha\le |S|\le p^{1-\alpha}\). These results are very close to the full statement, but the sources I found stop short of “for every prime \(p\).” ([cs.uwaterloo.ca](https://cs.uwaterloo.ca/~dstinson/papers/J256.pdf))
+
+I also tried a direct upgrade from a Graham-valid ordering of a nonzero-sum set to an Alspach ordering by cyclic rotation, but the naive version fails. For example, in \(\mathbb Z_7\), the ordering \(1,6,2\) of \(\{1,2,6\}\) is Graham-valid because its partial sums are \(1,0,2\), all distinct; but rotating after the zero prefix gives \(2,1,6\), whose partial sums are \(2,3,2\), so a collision appears. So that approach does not yield a proof.
+
+I also do not see how to finish the conjecture by a finite computation from the published asymptotic statements alone. The Pham–Sauermann theorem is stated with a parameter-dependent constant \(C_\alpha\), and the large-set theorem with an unspecified absolute \(c>0\); that is enough for “sufficiently large primes,” but not enough, from the information available in those statements, to identify and exhaust the remaining primes. ([arxiv.org](https://arxiv.org/pdf/2602.15797v1))
+
+Literature overlap
+
+For the exact statement “for every prime \(p\), every subset \(S\subseteq \mathbb Z_p\setminus\{0\}\) admits a valid ordering,” my assessment is (b), not (a): a close version exists in the literature, but not the exact theorem. The closest current result is the February 17, 2026 Pham–Sauermann theorem together with the 2025 large-subset theorem, which jointly settle the conjecture for all sufficiently large primes. Exact small-prime and fixed-size results are also known, and the rectification/integer route is already well developed in Kravitz and Bedert–Kravitz. So a complete proof for all primes, or a counterexample at one of the remaining finitely many primes, would still be genuinely new relative to the sources I found. ([arxiv.org](https://arxiv.org/pdf/2602.15797v1))
+
+If one eventually proves the conjecture by first proving the prime-order case of Alspach’s stronger conjecture and then invoking the published reduction Alspach \(\Rightarrow\) Graham, that would overlap existing literature conceptually but not nearly exactly: the reduction is already in Archdeacon–Dinitz–Mattern–Stinson, but the needed full prime-order Alspach theorem is not present in the sources I found. ([cs.uwaterloo.ca](https://cs.uwaterloo.ca/~dstinson/papers/J256.pdf))
+
+Sources
+
+Pham and Sauermann, “On Graham’s rearrangement conjecture” (arXiv:2602.15797v1): definition of valid ordering, exact conjecture statement, and the theorem \(C_\alpha\le |S|\le p^{1-\alpha}\). ([arxiv.org](https://arxiv.org/pdf/2602.15797v1))
+
+Bedert, Bucić, Kravitz, Montgomery, and Müyesser, “On Graham’s rearrangement conjecture over \(\mathbb F_2^n\)” (arXiv:2508.18254): abstract states the general theorem that every subset of size at least \(|G|^{1-c}\) in any finite group admits a valid ordering. ([arxiv.org](https://arxiv.org/abs/2508.18254))
+
+Archdeacon, Dinitz, Mattern, and Stinson, “On Partial Sums in Cyclic Groups”: Proposition 1.1 gives Alspach \(\Rightarrow\) Graham, and the paper reports computer verification up to cyclic order \(25\). ([cs.uwaterloo.ca](https://cs.uwaterloo.ca/~dstinson/papers/J256.pdf))
+
+Costa and Pellegrini, “Some new results about a conjecture by Brian Alspach” (2020): summarizes earlier prime-order exact results up to size \(11\) and proves the size-\(12\) Graham result. ([link.springer.com](https://link.springer.com/article/10.1007/s00013-020-01507-7))
+
+Kravitz, “Rearranging small sets for distinct partial sums” (2024): proves \(|S|\le \log p/\log\log p\) and the integer analogue. ([math.colgate.edu](https://math.colgate.edu/~integers/y113/y113.pdf))
+
+Bedert and Kravitz, “Graham’s rearrangement conjecture beyond the rectification barrier” (2025): improves the small-set range to \(|S|\le e^{(\log p)^{1/4}}\). ([link.springer.com](https://link.springer.com/article/10.1007/s11856-025-2871-6))","[{""kind"": ""output_citation"", ""title"": ""On Graham's rearrangement conjecture"", ""url"": ""https://arxiv.org/pdf/2602.15797v1""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://cs.uwaterloo.ca/~dstinson/papers/J256.pdf""}, {""kind"": ""output_citation"", ""title"": ""[2508.18254] On Graham's rearrangement conjecture over $\\mathbb{F}_2^n$"", ""url"": ""https://arxiv.org/abs/2508.18254""}, {""kind"": ""output_citation"", ""title"": ""Some new results about a conjecture by Brian Alspach | Archiv der Mathematik | Springer Nature Link"", ""url"": ""https://link.springer.com/article/10.1007/s00013-020-01507-7""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://math.colgate.edu/~integers/y113/y113.pdf""}, {""kind"": ""output_citation"", ""title"": ""Graham\u2019s rearrangement conjecture beyond the rectification barrier | Israel Journal of Mathematics | Springer Nature Link"", ""url"": ""https://link.springer.com/article/10.1007/s11856-025-2871-6""}]",,2026-03-08T22:35:48Z,2026-03-08T22:45:52Z,2602.15797v1,On Graham's rearrangement conjecture,"[""Huy Tuan Pham"", ""Lisa Sauermann""]",http://arxiv.org/abs/2602.15797v1,https://arxiv.org/pdf/2602.15797v1,https://arxiv.org/e-print/2602.15797v1,rearrangement.tex,70,72,Any subset $S\su \mathbb{Z}_p\setminus \{0\}$ admits a valid ordering.,Any subset $S Z_p \ 0\ $ admits a valid ordering.,0.8,0.78,Huy Tuan Pham; Lisa Sauermann
+6,124,resp_04ce2e9818fa31ea0069adf9c4cbbc8190a2862baa8e2771e8,completed,"Verdict
+
+I cannot confirm or disconfirm Conjecture 124 from the paper and currently available literature. A natural candidate universal family is a Dowling-/complete-gain-graph-type construction, but I do not see a complete proof, and I did not find an explicit counterexample. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+Well-specifiedness
+
+The conjecture is reasonably well specified once one imports Definition 4.1, which defines the class \(\mathcal M(\Gamma,\Gamma_1,\mathcal A)\), together with Section 7.1’s definition of a “sequence of universal models.” In this paper, a Frobenius group is finite, and Proposition 2.9 makes the Frobenius kernel unique and identifies \(\mathcal A\) as the set of Frobenius complements, so the data \((\Gamma,\Gamma_1,\mathcal A)\) are well defined in the finite case. A mild omission is that any concrete universal model will almost certainly have to be stated after simplification, since the universal models are required to be simple matroids. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+Reasoning
+
+The obvious route to a proof is an embedding argument into a fixed complete \(\Gamma\)-gain graph, because deletion of edges in the gain graph gives deletion/restriction of the associated matroid. Also, Lemma 3.5 gives exactly the sort of flexibility one would want in such a normalization: nontrivial \(\Gamma_1\)-loops can be moved between vertices without changing the matroid, and changing a loop label within a fixed complement subgroup does not change the matroid either. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+What I could not prove is the key normal-form step. Proposition 4.2 gives
+\(r(X)=|V(G[X])|-b(X)+l(X)\), with \(l(X)\in\{0,1\}\). That formula shows that a rank-\(r\) matroid can easily have a representation on more than \(r\) vertices whenever balanced tree components occur. So a proof cannot just take an arbitrary representation and place it inside a complete gain graph; one needs a genuine re-representation theorem saying that every simple rank-\(r\) matroid in \(\mathcal M(\Gamma,\Gamma_1,\mathcal A)\) can be compressed to a bounded “basis-vertex” model, analogous to the normal forms behind Dowling geometries and the known lifted-graphic universal models. I do not see that theorem in the paper, and I could not derive it from the current lemmas. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+The conjecture still looks plausible. Walsh explicitly frames it as the expected extension of the already-known universal-model results for finite-group frame matroids and finite-group lifted-graphic matroids, and Proposition 4.4 shows that the mixed class contains all \(\Gamma_1\)-lifted-graphic matroids and all \(A\)-frame matroids for \(A\in\mathcal A\). So the conjecture fits the surrounding theory very naturally. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+The representable subfamily in Theorem 5.6 also points in the same direction: there the matroids \(M(F^+\rtimes F^\times,F^+,\mathcal A,G,\psi)\) are represented by matrices obtained by adding one row to a frame matrix, which strongly suggests a “take all allowable columns” universal construction in finite-field cases. But that is only suggestive; it is not a proof for the full class. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+I am also cautious because nearby lift-universality conjectures have turned out to be delicate: Bernstein and Walsh show that a different general conjecture about matroid lifts is true for representable matroids but false in general. That does not refute the present conjecture, but it is enough that I do not want to claim success without a full normalization argument. ([arxiv.org](https://arxiv.org/abs/2306.12543))
+
+Literature overlap
+
+I did not find the exact theorem already proved elsewhere, so I would not classify this as (a) “nearly exact in the literature.”
+
+The best fit is (b) “a close version exists in the literature.” Walsh explicitly states that, for every finite group \(\Gamma\), the classes of \(\Gamma\)-frame matroids and \(\Gamma\)-lifted-graphic matroids have sequences of universal models, and Proposition 4.3 identifies those as the two extreme special cases of the present construction. Proposition 4.4 further shows that \(\mathcal M(\Gamma,\Gamma_1,\mathcal A)\) contains the corresponding kernel-lifted and complement-frame subfamilies. So the conjecture is a natural interpolation of known universal-model phenomena, but I did not locate the exact mixed Frobenius-kernel/complement statement itself. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+So my novelty assessment is: exact statement likely new; closest existing results are strong special cases, not the same theorem. That is closer to (b) than to (c), but only because the neighboring special cases are already very close. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+Sources
+
+Walsh, “Matroids from gain graphs over quotient groups,” arXiv:2602.23066v1: definitions of Frobenius groups/partitions, Definition 4.1 of \(\mathcal M(\Gamma,\Gamma_1,\mathcal A)\), Proposition 4.2 (rank formula), Proposition 4.3–4.4 (special cases/subclasses), Lemma 3.5 (loop moves), Theorem 4.10 (minor-closure), Theorem 5.6 (representable subfamily), and Conjecture 7.1 itself. ([arxiv.org](https://arxiv.org/pdf/2602.23066v1))
+
+Bernstein–Walsh, “Matroid lifts and representability,” arXiv:2306.12543v2: cautionary nearby example showing a general lift conjecture can hold representably yet fail in full generality. ([arxiv.org](https://arxiv.org/abs/2306.12543))","[{""kind"": ""output_citation"", ""title"": ""https://arxiv.org/pdf/2602.23066v1"", ""url"": ""https://arxiv.org/pdf/2602.23066v1""}, {""kind"": ""output_citation"", ""title"": ""https://arxiv.org/abs/2306.12543"", ""url"": ""https://arxiv.org/abs/2306.12543""}]",,2026-03-08T22:35:49Z,2026-03-08T22:47:17Z,2602.23066v1,Matroids from gain graphs over quotient groups,"[""Zach Walsh""]",http://arxiv.org/abs/2602.23066v1,https://arxiv.org/pdf/2602.23066v1,https://arxiv.org/e-print/2602.23066v1,main.tex,2306,2308,"If $\Gamma$ is a Frobenius group with Frobenius kernel $\Gamma_1$ and set $\cA$ of Frobenius complements, then $\cM(\Gamma, \Gamma_1, \cA)$ has a sequence of universal models.","If $$ is a Frobenius group with Frobenius kernel $_1$ and set $$ of Frobenius complements, then $(, _1, )$ has a sequence of universal models.",0.8,0.59,Zach Walsh
+7,494,resp_01cbf188ab3469b00069adf9c5a96081909840f87a6694b7e5,completed,"Verdict
+
+I cannot rigorously confirm or disconfirm Conjecture 494 as stated. The main obstacle is that the statement is too underspecified: it says the indicated level-2 and level-10 series are “related,” but it never defines what kind of relation is intended. If “related” means what it usually means elsewhere in the paper—namely, linked by an algebraic/modular/hypergeometric transformation of the associated Hauptmoduls and weight-two modular forms—then the conjecture looks very plausible, and I would expect it to be true, but I do not have a complete proof or an explicit modular equation for the pair (level 2, level 10).([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Well-specifiedness
+
+The conjecture is not well specified. It gives two sets of N-values, but does not say whether “related” means: equality after a pullback \(q \mapsto q^5\), equivalence of the resulting \(1/\pi\) identities, equality of coefficient sequences after a binomial transform, or an explicit algebraic relation between the Hauptmoduls \(X_2\) and \(X_{10}\). The local source context you supplied also places it in an “Old stuff, eventually to be deleted” subsection, which strongly suggests it was a draft note rather than a finalized theorem. The arXiv paper itself does prove many precise cross-level relations, but this particular one is left only as a conjectural remark.([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Reasoning
+
+The strongest structural evidence is the exact \(N\)-pattern. The negative level-2 table is parameterized by \(X_2(-e^{-\pi\sqrt N})\), while the negative level-10 table is parameterized by \(X_{10}(-e^{-\pi\sqrt{N/5}})\). Thus the conjectured pairing \(\{25,45,85\}\leftrightarrow\{5,9,17\}\) is exactly the rule
+\(N_{\text{level 2}}=5N_{\text{level 10}}\).
+So if \(q_{10}=-e^{-\pi\sqrt{N/5}}\), then
+\(q_{10}^5=-e^{-\pi\sqrt{5N}}\),
+which gives precisely the level-2 rows \(N=25,45,85\) when \(N=5,9,17\). In other words, the conjecture is perfectly aligned with a degree-5 pullback \(\tau \mapsto 5\tau\).([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+That interpretation matches the rest of the paper. Theorem 7.1 gives explicit pullbacks from level 1 to levels \(2,3,5,7,11,13,23\), with one branch behaving like \(y_+=x^\ell+O(x^{\ell+1})\) and another like \(y_-=x+O(x^2)\). Theorems 9.1 and 9.2 then show that all level \(4\ell\) series and almost all level \(9\ell\) series come from lower levels by analogous transformation formulas. So a degree-5 relation between level 10 and level 2 is exactly the kind of phenomenon the paper studies, even though it is not one of the proved theorems.([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+A mathematically coherent proof strategy would be this. Let
+\(x(\tau)=X_{10}(\tau)\) and \(y(\tau)=X_2(5\tau)\).
+Then \(x\) and \(y\) are modular functions on a common finite-index subgroup, so there must be some algebraic relation \(P(x,y)=0\). Near the cusp, \(x=q+O(q^2)\) and \(y=q^5+O(q^6)\), so the relevant branch should satisfy \(y=x^5+O(x^6)\). Likewise one expects the ratio \(Z_2(5\tau)/Z_{10}(\tau)\) to be an algebraic modular function in \(x,y\). If one computes that modular equation and this prefactor explicitly, then differentiating would give the corresponding relation between the \(\lambda\)-parameters and hence an equivalence of the Ramanujan-type series. I believe this is the right mechanism, but I have not actually computed \(P\) or the prefactor, so this remains a proof outline rather than a finished proof. The paper’s general \(1/\pi\)-series framework and its worked examples support exactly this style of argument.([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+So my conclusion is: no counterexample is apparent, the \(q\)-parameter matching is too exact to look accidental, and the conjecture is likely true in the intended modular-transformation sense; but I cannot honestly claim a proof from the available information.
+
+Literature overlap
+
+I did not find the exact statement “the level-2 rows \(N=25,45,85\) are related to the level-10 rows \(N=5,9,17\)” proved verbatim in the paper. The level-10 series themselves come from Shaun Cooper’s 2012 paper “Level 10 analogues of Ramanujan’s series for \(1/\pi\),” cited in the arXiv manuscript as [54], and the arXiv paper explicitly says level-10 series were studied further there. The transformation technology used throughout the arXiv paper is tied to Cooper–Zudilin’s “Hypergeometric modular equations” [63], and the later paper of Wang–Yang on “Ramanujan-type \(1/\pi\) series from bimodular forms” [105] is very close in spirit to the kind of cross-level statement needed here. That is enough for me to classify this as (b) close to existing literature, not (a) nearly exactly already in the literature.([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+As a supplementary but non-refereed clue, a 2023 MathOverflow discussion explicitly remarks that level-10 formulas can be produced by a general transformation and that the same method applies to a level-2 Ramanujan formula. That strongly supports the plausibility of the conjecture, but it does not upgrade the literature classification from (b) to (a).([mathoverflow.net](https://mathoverflow.net/questions/446886/ramanujans-pi-formulas-with-a-twist-nine-years-later))
+
+Sources
+
+Primary source: the arXiv abstract and PDF for 2602.09352v1, especially the negative level-2 table, the negative level-10 table, Theorem 7.1, and Theorems 9.1–9.2. For literature overlap, I relied on the paper’s reference-list identifications of [54] Shaun Cooper, “Level 10 analogues of Ramanujan’s series for \(1/\pi\)” (2012), [63] Cooper–Zudilin, “Hypergeometric modular equations” (2019), and [105] Wang–Yang, “Ramanujan-type \(1/\pi\) series from bimodular forms” (2022). I also used the 2023 MathOverflow thread “Ramanujan’s pi formulas with a twist (nine years later)” as a supplementary clue.([arxiv.org](https://arxiv.org/abs/2602.09352v1))","[{""kind"": ""output_citation"", ""title"": ""Quadratic irrational analogues of Ramanujan's series for $1/\\pi$"", ""url"": ""https://arxiv.org/pdf/2602.09352v1""}, {""kind"": ""output_citation"", ""title"": ""nt.number theory - Ramanujan's pi formulas with a twist (nine years later) - MathOverflow"", ""url"": ""https://mathoverflow.net/questions/446886/ramanujans-pi-formulas-with-a-twist-nine-years-later""}, {""kind"": ""output_citation"", ""title"": ""[2602.09352v1] Quadratic irrational analogues of Ramanujan's series for $1/\u03c0$"", ""url"": ""https://arxiv.org/abs/2602.09352v1""}]",,2026-03-08T22:35:50Z,2026-03-08T22:41:23Z,2602.09352v1,Quadratic irrational analogues of Ramanujan's series for $1/π$,"[""John M. Campbell"", ""Shaun Cooper"", ""Dongxi Ye""]",http://arxiv.org/abs/2602.09352v1,https://arxiv.org/pdf/2602.09352v1,https://arxiv.org/e-print/2602.09352v1,QuadraticArXiv_1.tex,6654,6657,"\label{C:4.2}
+The series $N\in\left\{25,45,85\right\}$ in Table~\ref{T:2.2} is related to the level 10 series $N\in\left\{5,9,17\right\}$ in~Table~\ref{T:10.2}.","The series $N\ 25,45,85\ $ in Table~ is related to the level 10 series $N\ 5,9,17\ $ in~Table~.",0.8,0.4,John M. Campbell; Shaun Cooper; Dongxi Ye
+8,480,resp_0c3bd7f8f3b27b160069adf9c6fc44819da18505787ca5aeb2,completed,"Verdict
+
+Conditionally confirmed. As written, the conjecture is not a formal theorem because “related” is undefined and the supplied table label “Table 1.1” does not match the numbering used in the v1 PDF. But under the natural interpretation used throughout the paper — namely, “related” meaning equivalent/connected by explicit hypergeometric-modular transformations that turn one Ramanujan-type 1/π series into another — the conjectural phenomenon is already essentially established in arXiv:2602.09352v1. In that sense, I would count the conjecture as true in substance, but not as a fully well-posed standalone statement. ([arxiv.org](https://arxiv.org/abs/2602.09352))
+
+Well-specifiedness
+
+The conjecture is only moderately well-specified. First, “related” is never defined: it could mean “equal after a hypergeometric transformation,” “coming from the same modular equation,” “equivalent after passing through another level,” or something weaker. Second, the conjecture does not say whether the intended correspondence is pairwise (8↔2, 12↔3, 16↔4, 28↔7), or merely that the two sets lie in the same transformation network. Third, the source snippet refers to “Table 1.1,” whereas the v1 PDF itself says the series data are in Tables 5–54, so the exact cross-reference in the conjecture is draft-only notation rather than the published numbering. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+A reasonable precise reformulation is: the level-1 series with N in {8,12,16,28} are obtainable from the same modular/hypergeometric transformation framework as the rational level-1 series with N in {2,3,4,7}. Under that reformulation, the statement is mathematically meaningful and, in my view, essentially correct. ([arxiv.org](https://arxiv.org/abs/2602.09352))
+
+Reasoning
+
+The paper’s standard notion of “relation” is transformation-equivalence of Ramanujan-type series via identities between the generating functions F_ℓ and Hauptmoduls X_ℓ. This is exactly how the abstract phrases the Borwein example (“equivalent by hypergeometric transformation formulas”), and theorem 2.4 is the general machine that converts such modular/hypergeometric identities into actual 1/π series with parameters X and λ. ([arxiv.org](https://arxiv.org/abs/2602.09352))
+
+The decisive general result is theorem 9.1 (“Levels ℓ and 4ℓ”). For ℓ=1 it specializes to the classical quadratic identities
+F_4(x) = (1-16x)^(-1/2) F_1(x^2/(1-16x)^3)
+and
+F_4(x) = (1-256x)^(-1/2) F_1(-x/(1-256x)^3).
+The paper then states explicitly that, as a consequence, all level-4 Ramanujan-type series can be deduced from the corresponding level-1 series. So the N↦4N pattern is not mysterious in the final text; it is part of a general “levels 1 and 4” transformation principle. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Moreover, theorem 7.2 already settles part of the old draft pattern directly: among positive level-1 quadratic irrational series, N=12 is obtained from the positive level-3 series with N=4, and N=28 from the positive level-7 series with N=4. So those cases are no longer conjectural in the body of the paper. The same theorem says the only positive level-1 exceptions not handled there are N=8 and N=16, which is exactly where the separate levels-(1,4) transformation of theorem 9.1 becomes the natural missing mechanism. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+For the remaining pair {8,16}, table 11 is highly suggestive: it contains the level-4 entries with N=2,3,4,7 and also N=8,12,16,28, and the references come in matched Baruah–Berndt pairs [11,(4.1)/(4.3)], [11,(8.1)/(8.3)], [11,(5.1)/(5.3)], [11,(9.1)/(9.3)]. I take that as strong evidence that the draft conjecture was pointing at the classical quartic-theory N versus 4N pairings, later absorbed into the general transformation formalism of theorem 9.1. Because “related” is undefined, I would not present this as a literal theorem with a unique pair-by-pair statement; but as a transformation-theoretic claim, it is coherent and essentially confirmed. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+So my bottom line is: I do not think the exact sentence, as written, is formal enough to be “proved” word-for-word. But I do think the intended mathematical content is already captured by the paper’s later theorems, especially theorem 9.1, together with theorem 7.2 and the classical quartic-theory formulas behind table 11. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Literature overlap
+
+Best classification: (a) nearly exact in the literature, with the caveat that the deleted conjecture itself is too vague to have an exact canonical formulation. The same arXiv v1 already contains theorem 9.1, which gives the broad levels-(ℓ,4ℓ) transformation theorem, and the paper explicitly says theorem 9.1 generalizes identities already considered by the Borweins and by Baruah–Berndt, with later generalization in [63]. The reference list identifies [11] as Baruah–Berndt, “Eisenstein series and Ramanujan-type series for 1/π,” Ramanujan Journal 23 (2010), 17–44. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+For the exact quartet behind the draft conjecture, the overlap is very close. Table 11’s citation pattern to [11,(4.1)], [11,(4.3)], [11,(5.1)], [11,(5.3)], [11,(8.1)], [11,(8.3)], [11,(9.1)], [11,(9.3)] is almost certainly the classical source of the N and 4N pairings that the draft note was gesturing toward. So I would not call the idea relatively novel. At most, the novelty would be in packaging those pairings into the paper’s modern Hauptmodul/transformational classification, not in the underlying phenomenon itself. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+If one insists on the literal draft wording, then I would downgrade this slightly to “between (a) and (b)”: the exact sentence is not a standard published theorem because “related” is undefined, but the mathematically natural formalization is nearly already there. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+Sources
+
+Campbell, Cooper, Ye, “Quadratic irrational analogues of Ramanujan’s series for 1/π,” arXiv:2602.09352v1 — abstract, theorem 2.4, theorem 7.2, theorem 9.1, section 4.2, and table 11. ([arxiv.org](https://arxiv.org/abs/2602.09352))
+
+Reference list entry identifying [11] as Baruah–Berndt, “Eisenstein series and Ramanujan-type series for 1/π,” Ramanujan Journal 23 (2010), 17–44. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))
+
+The paper’s statement that theorem 9.1 generalizes earlier identities considered by the Borweins and Baruah–Berndt, and later generalized in [63]. ([arxiv.org](https://arxiv.org/pdf/2602.09352v1))","[{""kind"": ""output_citation"", ""title"": ""[2602.09352] Quadratic irrational analogues of Ramanujan's series for $1/\u03c0$"", ""url"": ""https://arxiv.org/abs/2602.09352""}, {""kind"": ""output_citation"", ""title"": ""Quadratic irrational analogues of Ramanujan's series for $1/\\pi$"", ""url"": ""https://arxiv.org/pdf/2602.09352v1""}]",,2026-03-08T22:35:51Z,2026-03-08T22:43:12Z,2602.09352v1,Quadratic irrational analogues of Ramanujan's series for $1/π$,"[""John M. Campbell"", ""Shaun Cooper"", ""Dongxi Ye""]",http://arxiv.org/abs/2602.09352v1,https://arxiv.org/pdf/2602.09352v1,https://arxiv.org/e-print/2602.09352v1,QuadraticArXiv_1.tex,6573,6576,"\label{C:1.1}
+The series $N\in\left\{8,12,16,28\right\}$ in Table~\ref{T:1.1} are related to the series $N\in\left\{2,3,4,7\right\}$ in Table~\ref{T:1.1}.","The series $N\ 8,12,16,28\ $ in Table~ are related to the series $N\ 2,3,4,7\ $ in Table~.",0.8,0.36,John M. Campbell; Shaun Cooper; Dongxi Ye
+9,756,resp_08eaf70304f817840069adf9c78d008197850be433fac9bb4b,completed,"Verdict
+
+Disconfirmed. Conjecture 6.3 says that for every skew finite F in ℓ_1^N and every 0<r<skew(F)/2,
+det(Z_{C_F(r)^{(0)}})=4^k r^k+O(r^{k+1}),
+with k=2^{N-1}N|F|. In N=1, the set F={0,1} is skew, skew(F)=1, and k=2. ([arxiv.org](https://arxiv.org/pdf/2603.04271v1))
+
+For 0<r<1/2, C_F(r)^{(0)}={-r,r,1-r,1+r}. A direct computation gives
+det(Z_{C_F(r)^{(0)}})=(1-e^{-4r})^2(1-e^{-2(1-2r)})
+=16(1-e^{-2})r^2+O(r^3),
+and 16(1-e^{-2})≠16. So the conjectured leading coefficient is wrong, hence the conjecture is false.
+
+Well-specifiedness
+
+Inside the paper, the conjecture is reasonably well-specified: the paper defines skewness, cubical thickenings C_F(r)=⋃_{p∈F}C_p(r) with C_p(r)=B_∞(p,r), and identifies k as the number of 1-dimensional faces. As a standalone snippet, though, it is not fully self-contained, because notation such as Fin+(ℓ_1^N), Z_X, C_F(r), and skew(F) is imported from earlier sections, and the O(r^{k+1}) is only implicitly an asymptotic as r→0^+. ([arxiv.org](https://arxiv.org/pdf/2603.04271v1))
+
+Reasoning
+
+In dimension 1, a skew finite set is just a finite set of distinct real numbers. Write F={x_1<⋯<x_m}. Then C_F(r) is the union of the disjoint intervals [x_i-r,x_i+r], so its vertex set is
+y_1=x_1-r<y_2=x_1+r<y_3=x_2-r<⋯<y_{2m}=x_m+r
+whenever 0<r<skew(F)/2. ([arxiv.org](https://arxiv.org/pdf/2603.04271v1))
+
+Now take any ordered points y_1<⋯<y_n on the real line and set q_i:=e^{-(y_{i+1}-y_i)}. For the similarity matrix Z=(e^{-|y_i-y_j|})_{i,j=1}^n, do the descending row operations
+R_i ← R_i - q_{i-1}R_{i-1},  i=n,n-1,…,2.
+If j<i, then
+Z_{ij}=e^{-(y_i-y_j)}=e^{-(y_i-y_{i-1})}e^{-(y_{i-1}-y_j)}=q_{i-1}Z_{i-1,j},
+so the new (i,j)-entry is 0.
+If j≥i, then
+Z_{i-1,j}=e^{-(y_j-y_{i-1})}=q_{i-1}e^{-(y_j-y_i)}=q_{i-1}Z_{ij},
+so the new (i,j)-entry is (1-q_{i-1}^2)Z_{ij}.
+Hence the matrix becomes upper triangular with diagonal entries
+1, 1-q_1^2, …, 1-q_{n-1}^2.
+Therefore
+det Z = ∏_{i=1}^{n-1}(1-q_i^2).
+
+Apply this to the 2m vertices of C_F(r). Their successive gaps are
+2r, x_2-x_1-2r, 2r, x_3-x_2-2r, …, 2r.
+So
+det(Z_{C_F(r)^{(0)}})
+= (1-e^{-4r})^m ∏_{i=1}^{m-1}(1-e^{-2(x_{i+1}-x_i-2r)}).
+
+Expanding at r=0 gives
+det(Z_{C_F(r)^{(0)}})
+= 4^m det(Z_F) r^m + O(r^{m+1}),
+where Z_F is the similarity matrix of F. Thus in N=1 the exponent k=m is correct, but the coefficient is generally 4^m det(Z_F), not 4^m. So every skew F⊂ℓ_1^1 with more than one point is a counterexample to the stated coefficient.
+
+Literature overlap
+
+The exact conjecture is not already known in the literature in any positive sense, because it is false. But the determinant computation behind the counterexample is very close to classical one-dimensional exponential-kernel / Kac-Murdock-Szegő calculations. Narayan and Shastry state the equally spaced Toeplitz case det(C)=(1-e^{-2κ})^N and note that it follows by Gauss triangulation, while Delgado and Peña record the modern KMS determinant formula det(A)=(1-σρ)^{n-1}. Narayan and Shastry also explicitly discuss a generalized nonuniform-spacing matrix of the same exponential form. So I would classify the overlap as (b): a close version exists in the literature. The specific observation that this conjecture already fails in N=1 appears not to be recorded in the sources I found, but it is an elementary consequence of this classical 1D determinant structure. ([osti.gov](https://www.osti.gov/pages/servlets/purl/1774560))
+
+Sources
+
+- Kalisnik and Lesnik, “Continuity of Magnitude at Skew Finite Subsets of ℓ_1^N,” arXiv:2603.04271v1, for the conjecture and its notation/definitions. ([arxiv.org](https://arxiv.org/abs/2603.04271v1))
+- Narayan and Shastry, “Generalized Toeplitz–Hankel matrices and their application to a layered electron gas” (2021), for classical determinant formulas of exponential-kernel matrices and the generalized nonuniform-spacing setup. ([osti.gov](https://www.osti.gov/pages/servlets/purl/1774560))
+- Delgado and Peña, “High-relative-accuracy computations with Kac-Murdock-Szegö matrices and their generalizations” (2025), for a modern statement of KMS determinant formulas. ([link.springer.com](https://link.springer.com/article/10.1007/s40314-025-03137-7))","[{""kind"": ""web_search_source"", ""queries"": [""calculator: exp(-1)""], ""url"": ""None"", ""web_search_call_id"": ""ws_08eaf70304f817840069adfa5a4d608197a92559e1168b574b""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: 2+2""], ""url"": ""None"", ""web_search_call_id"": ""ws_08eaf70304f817840069adfa5c98a08197a614724582118443""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: e^(-1)""], ""url"": ""None"", ""web_search_call_id"": ""ws_08eaf70304f817840069adfa5da66481979fc5edb13a0daf71""}, {""kind"": ""output_citation"", ""title"": ""Continuity of Magnitude at Skew Finite Subsets of $\\ell_1^N$"", ""url"": ""https://arxiv.org/pdf/2603.04271v1""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://www.osti.gov/pages/servlets/purl/1774560""}, {""kind"": ""output_citation"", ""title"": ""[2603.04271v1] Continuity of Magnitude at Skew Finite Subsets of $\\ell_1^N$"", ""url"": ""https://arxiv.org/abs/2603.04271v1""}, {""kind"": ""output_citation"", ""title"": ""High-relative-accuracy computations with Kac-Murdock-Szeg\u00f6 matrices and their generalizations | Computational and Applied Mathematics | Springer Nature Link"", ""url"": ""https://link.springer.com/article/10.1007/s40314-025-03137-7""}]",,2026-03-08T22:35:52Z,2026-03-08T22:44:12Z,2603.04271v1,Continuity of Magnitude at Skew Finite Subsets of $\ell_1^N$,"[""Sara Kalisnik"", ""Davorin Lesnik""]",http://arxiv.org/abs/2603.04271v1,https://arxiv.org/pdf/2603.04271v1,https://arxiv.org/e-print/2603.04271v1,main_magnitude_continuity.tex,1105,1109,"For every skew $F \in \ifsub(\ell_1^N)$ and $r \in \intoo{0}{\frac{\skw(F)}{2}}$ we have
+\[\det\big(Z_{\cc_F(r)^{(0)}}\big) = 4^k r^k + O(r^{k+1})\]
+where $k := 2^{N-1} N \cdot \card{F}$ (i.e.\ $k$ is the number of $1$-dimensional faces in~$\cc_F(r)$).",For every skew $F (_1^N)$ and $r 0 (F) 2 $ we have \[(Z_ _F(r)^ (0) ) = 4^k r^k + O(r^ k+1 )\] where $k := 2^ N-1 N F$ (i.e.\ $k$ is the number of $1$-dimensional faces in~$_F(r)$).,0.8,0.33,Sara Kalisnik; Davorin Lesnik
+10,472,resp_0460c5a24142bd970069adf9c87d2481a1983daa3cc93282f3,completed,"Verdict
+
+Confirmed. All four parts of Conjecture 4.1 are true. Therefore the paper’s conditional Proposition 4.2 becomes unconditional as stated there. ([arxiv.org](https://arxiv.org/pdf/2602.09607v1))
+
+Well-specifiedness
+
+The conjecture is mostly well specified. The only mild ambiguity is whether k is intended to be an integer or a real number. In the paper’s actual application, k comes from writing n as 2k or 2k+1, so integer k is the intended use; however, the product inequalities themselves make sense for real k, and the proof below works for every real k above the stated thresholds. The thresholds are also large enough that all denominators k-j are positive, so there is no hidden domain problem. ([arxiv.org](https://arxiv.org/pdf/2602.09607v1))
+
+Reasoning
+
+Let L = ln 2.
+
+Each factor 1 + c/(k-j) is strictly decreasing in k on its domain, so each whole product is decreasing in k. Hence it is enough to prove each inequality at the threshold value of k.
+
+A basic estimate used repeatedly is:
+
+If x,y >= 0 and x+y <= 2u + u^2, then
+(1+x)(1+y) <= (1 + (x+y)/2)^2 <= (1+u+u^2/2)^2 <= e^(2u).
+
+The first step is AM-GM, and the last step is the standard bound 1+u+u^2/2 <= e^u.
+
+Now do the four parts.
+
+(a) and (b) together
+
+Write
+P_m(k) = product_{j=1}^m (1 + (m+1)/(k-j)),
+where m = 2s in part (a), and m = 2s+1 in part (b).
+
+Set
+K = (m+1/2)^2 / L,
+u = L/m.
+
+For 1 <= j <= floor(m/2), pair the factors with indices j and m+1-j:
+T_j = (1 + (m+1)/(K-j)) (1 + (m+1)/(K-m-1+j)).
+
+Its denominator product is
+(K-j)(K-m-1+j) = K(K-m-1) + j(m+1-j).
+
+Since j(m+1-j) is minimized at the outermost pair j=1, every pair satisfies
+T_j <= T_1.
+
+So it remains to bound the outermost pair
+T_1 = (1+x)(1+y),
+x = (m+1)/(K-1),
+y = (m+1)/(K-m).
+
+I claim
+x+y <= 2L/m + L^2/m^2 = 2u + u^2.
+
+After clearing denominators, this is equivalent to
+D_a(m) >= 0, where
+
+D_a(m)
+= (1/2 - L^2)m^3
+  + (1/2)m^2
+  + (1/8 - 5L^2/4 + L^3)m
+  + L/16 - L^2/4.
+
+Now L = ln 2 satisfies L < 1 and L^2 < 1/2, so
+1/8 - 5L^2/4 + L^3 > -1/2,
+and
+L/16 - L^2/4 > -1/8.
+
+Therefore
+D_a(m) > (1/2)m^2 - (1/2)m - 1/8 > 0
+for every m >= 2.
+
+Hence x+y <= 2u+u^2, so by the two-factor estimate,
+T_1 <= e^(2u).
+
+If m is even, there are m/2 such pairs, so
+P_m(K) <= (e^(2u))^(m/2) = e^(mu) = e^L = 2.
+This proves part (a), since there m=2s.
+
+If m is odd, there are (m-1)/2 pairs and one middle factor
+M = 1 + (m+1)/(K-(m+1)/2).
+
+We need M <= e^u. It is enough to show
+(m+1)/(K-(m+1)/2) <= u + u^2/2 = L/m + L^2/(2m^2).
+
+After clearing denominators, this is equivalent to
+D_mid(m) >= 0, where
+
+D_mid(m)
+= (1-L^2)m/2 + L/4 - L^2/2.
+
+Again L^2 < 1/2, so
+D_mid(m) > m/4 - 1/4 >= 0
+for m >= 1.
+
+Thus M <= 1+u+u^2/2 <= e^u. Therefore
+P_m(K) <= (e^(2u))^((m-1)/2) e^u = e^(mu) = e^L = 2.
+This proves part (b), since there m=2s+1.
+
+(c)
+
+Write m = 2s and
+Q_m(k) = product_{j=0}^{m-1} (1 + m/(k-j)).
+
+Set
+K = m^2/L,
+u = L/m.
+
+Pair j with m-1-j. For 0 <= j <= m/2-1, the j-th pair is
+S_j = (1 + m/(K-j))(1 + m/(K-m+1+j)).
+
+Its denominator product is
+(K-j)(K-m+1+j) = K(K-m+1) + j(m-1-j),
+
+which is minimized at j=0. Hence every pair satisfies
+S_j <= S_0.
+
+Now
+S_0 = (1+x)(1+y),
+x = m/K = L/m = u,
+y = m/(K-m+1).
+
+So it is enough to show y <= u+u^2. But
+m/(m^2/L - m + 1) <= L/m + L^2/m^2
+
+is equivalent, after clearing denominators, to
+L(1-L)m + L^2 >= 0,
+which is obvious.
+
+Hence x+y <= 2u+u^2, so S_0 <= e^(2u). There are m/2 pairs, therefore
+Q_m(K) <= (e^(2u))^(m/2) = e^L = 2.
+This proves part (c).
+
+(d)
+
+Write m = 2s and
+R_m(k) = product_{j=2}^{m+1} (1 + (m+2)/(k-j)).
+
+Set
+K = (m+1)^2/L,
+u = L/m.
+
+Pair the outer factors:
+for 0 <= i <= m/2-1,
+U_i = (1 + (m+2)/(K-2-i))(1 + (m+2)/(K-m-1+i)).
+
+Its denominator product is
+(K-2-i)(K-m-1+i) = (K-2)(K-m-1) + i(m-1-i),
+
+which is minimized at i=0. Hence every pair satisfies
+U_i <= U_0.
+
+Now
+U_0 = (1+x)(1+y),
+x = (m+2)/(K-2),
+y = (m+2)/(K-m-1).
+
+I claim
+x+y <= 2L/m + L^2/m^2 = 2u+u^2.
+
+After clearing denominators, this is equivalent to
+D_d(m) >= 0, where
+
+D_d(m)
+= (2-L-L^2)m^3
+  + (4-2L-L^2)m^2
+  + (2-2L-3L^2+2L^3)m
+  + (L-3L^2+2L^3).
+
+Using L<1 and L^2<1/2,
+2-L-L^2 > 1/2,
+4-2L-L^2 > 3/2,
+2-2L-3L^2+2L^3 > -3/2,
+and
+L-3L^2+2L^3 > -1/4.
+
+So
+D_d(m) > (1/2)m^3 + (3/2)m^2 - (3/2)m - 1/4 > 0
+for every m >= 2.
+
+Hence x+y <= 2u+u^2, so U_0 <= e^(2u). With m/2 pairs,
+R_m(K) <= (e^(2u))^(m/2) = e^L = 2.
+This proves part (d).
+
+So every part (a)-(d) holds, and the conjecture is proved.
+
+Literature overlap
+
+The conjecture appears in Section 4 of the paper, explicitly labeled “based on computer experiments,” and is used there only conditionally to derive a sharper lower bound for h(n,n). Since the conjecture is now proved, that conditional step can be read unconditionally. ([arxiv.org](https://arxiv.org/pdf/2602.09607v1))
+
+As for prior literature: these products are special cases of ratios of neighboring binomial coefficients, equivalently ratios of gamma functions. So they lie very close to the classical literature on bounds for gamma ratios. DLMF lists Gautschi’s and Kershaw’s inequalities as standard reference points, and Qi’s survey explains that Wendel-type inequalities plus recurrence can be used to bound general ratios Γ(x+a)/Γ(x+b). Burnside-type and symmetric gamma inequalities are also nearby in flavor, especially because the present thresholds involve half-shifts such as m+1/2. ([dlmf.nist.gov](https://dlmf.nist.gov/5.6))
+
+But I did not locate these exact four threshold-2 finite-product inequalities in the sources I checked. So my best classification is (b): a close version exists in the literature, but not nearly exactly in this stated form. The exact conjecture and the elementary pairing/AM-GM proof above both appear to be nonstandard, even though the surrounding gamma-ratio technology is classical and extensive. ([journalofinequalitiesandapplications.springeropen.com](https://journalofinequalitiesandapplications.springeropen.com/articles/10.1186/1029-242X-2013-542))
+
+Sources
+
+1. Bordianu–Cimpoeas, “On the Hilbert depth of the quotient ring of the edge ideal of a complete bipartite graph,” arXiv:2602.09607v1; source of the conjecture and of Proposition 4.2. ([arxiv.org](https://arxiv.org/abs/2602.09607))
+
+2. DLMF §5.6, which records Gautschi’s and Kershaw’s inequalities as standard gamma-function inequalities. ([dlmf.nist.gov](https://dlmf.nist.gov/5.6))
+
+3. Feng Qi, “Bounds for the ratio of two gamma functions: from Wendel’s asymptotic relation to Elezović-Giordano-Pečarić’s theorem,” for the broader gamma-ratio literature and the remark that recurrence plus Wendel-type bounds control general Γ(x+a)/Γ(x+b). ([journalofinequalitiesandapplications.springeropen.com](https://journalofinequalitiesandapplications.springeropen.com/articles/10.1186/1029-242X-2013-542))
+
+4. Mortici, “Sharp bounds for gamma and digamma function arising from Burnside’s formula,” and Chen–Liu, “Inequalities and asymptotic expansions for the gamma function,” as nearby Burnside/symmetric-gamma literature. ([ictp.acad.ro](https://ictp.acad.ro/jnaat/journal/article/download/2010-vol39-no1-art6/Mortici-pdf/920))","[{""kind"": ""web_search_source"", ""queries"": [""calculator: (1+5/(24-1))*(1+5/(24-2))*(1+5/(24-3))*(1+5/(24-4))""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfa32365c81a18b85711145f44971""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: (20.25)/(ln(2))""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfa3610f081a1b72425e9cd71e12c""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: 20.25/0.6931471805599453""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfa387aa481a1aeefa6852575600d""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: (1+5/(30-1))*(1+5/(30-2))*(1+5/(30-3))*(1+5/(30-4))""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfa3afe2c81a1bff429041c93ab48""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: (1+6/(52-0))*(1+6/(52-1))*(1+6/(52-2))*(1+6/(52-3))*(1+6/(52-4))*(1+6/(52-5))""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfb2dff3481a1b83e6e901a911972""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: (1+8/(93-0))*(1+8/(93-1))*(1+8/(93-2))*(1+8/(93-3))*(1+8/(93-4))*(1+8/(93-5))*(1+8/(93-6))*(1+8/(93-7))""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfb33273881a1a51e5d7ff40f223f""}, {""kind"": ""web_search_source"", ""queries"": [""calculator: (1+8/93)*(1+8/92)*(1+8/91)*(1+8/90)*(1+8/89)*(1+8/88)*(1+8/87)*(1+8/86)""], ""url"": ""None"", ""web_search_call_id"": ""ws_0460c5a24142bd970069adfb3520ec81a194ed6ff89ae76ce2""}, {""kind"": ""output_citation"", ""title"": ""On the Hilbert depth of the quotient ring of the edge ideal of a complete bipartite graph"", ""url"": ""https://arxiv.org/pdf/2602.09607v1""}, {""kind"": ""output_citation"", ""title"": ""DLMF: \u00a75.6 Inequalities \u2023 Properties \u2023 Chapter 5 Gamma Function"", ""url"": ""https://dlmf.nist.gov/5.6""}, {""kind"": ""output_citation"", ""title"": ""Bounds for the ratio of two gamma functions: from Wendel\u2019s asymptotic relation to Elezovi\u0107-Giordano-Pe\u010dari\u0107\u2019s theorem | Journal of Inequalities and Applications"", ""url"": ""https://journalofinequalitiesandapplications.springeropen.com/articles/10.1186/1029-242X-2013-542""}, {""kind"": ""output_citation"", ""title"": ""[2602.09607] On the Hilbert depth of the quotient ring of the edge ideal of a complete bipartite graph"", ""url"": ""https://arxiv.org/abs/2602.09607""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://ictp.acad.ro/jnaat/journal/article/download/2010-vol39-no1-art6/Mortici-pdf/920""}]",,2026-03-08T22:35:52Z,2026-03-08T22:55:39Z,2602.09607v1,On the Hilbert depth of the quotient ring of the edge ideal of a complete bipartite graph,"[""Andreea I. Bordianu"", ""Mircea Cimpoeas""]",http://arxiv.org/abs/2602.09607v1,https://arxiv.org/pdf/2602.09607v1,https://arxiv.org/e-print/2602.09607v1,Hilbert_depth_complete_bipartite_graph_-_10_feb_2026.tex,559,572,"\label{conj}
+Let $s$ be a positive integer. Then:
+\begin{enumerate}
+
+\item[(a)] $\prod\limits_{j=1}^{2s} \left( 1 + \frac{2s+1}{k-j} \right) \leq 2$, for $k\geq \frac{(2s+0.5)^2}{\ln(2)} $. 
+
+\item[(b)] $\prod\limits_{j=1}^{2s+1} \left( 1 + \frac{2s+2}{k-j} \right) \leq 2$, for $k \geq \frac{(2s+1.5)^2}{\ln(2)}$. 
+
+\item[(c)] $\prod\limits_{j=0}^{2s-1} \left( 1 + \frac{2s}{k-j} \right) \leq 2$, for $k \geq \frac{4s^2}{\ln(2)}$.
+
+\item[(d)] $\prod\limits_{j=2}^{2s+1} \left( 1 + \frac{2s+2}{k-j} \right) \leq 2$, for $k \geq \frac{(2s+1)^2}{\ln(2)}$.
+
+\end{enumerate}","Let $s$ be a positive integer. Then: enumerate $_ j=1 ^ 2s ( 1 + 2s+1 k-j ) 2$, for $k (2s+0.5)^2 (2) $. $_ j=1 ^ 2s+1 ( 1 + 2s+2 k-j ) 2$, for $k (2s+1.5)^2 (2) $. $_ j=0 ^ 2s-1 ( 1 + 2s k-j ) 2$, for $k 4s^2 (2) $. $_ j=2 ^ 2s+1 ( 1 + 2s+2 k-j ) 2$, for $k (2s+1)^2 (2) $. enumerate",0.8,0.32,Andreea I. Bordianu; Mircea Cimpoeas
+11,786,resp_0485f608e78bac7a0069adf9c90ec4819cb83d2d923f653995,completed,"Verdict
+I disconfirm the conjecture under the paper's own later formalization, and I would still regard it as under-specified if read outside that formalization. In Definitions 3.1 and 3.4, a “legal configuration” encodes only what one player knows, and a “legal move” is a rule-allowed player action. With that semantics, the proposed map from (configuration, move) to “the consequent configuration” is not single-valued: the same information-state and the same move can produce different next information-states when hidden deck order matters. So the object is not even a function, hence not a computable function, as stated. A nearby repaired claim using a transition relation, or a full-state function with explicit random outcomes, may still be true, but that is a different conjecture. ([arxiv.org](https://arxiv.org/pdf/2603.02863v1))
+
+Well-specifiedness
+Poor. The paper itself says the configuration definition is “somewhat informal,” and its later formal definition makes a configuration an encoding of what one player knows rather than a complete hidden state. The official gameplay semantics are also spread across several documents: the rulebook, advanced-rules material such as Fast Effect Timing, Problem-Solving Card Text resources, and tournament/policy documents, with policy documents explicitly updated over time. Finally, Yu-Gi-Oh contains shuffling and coin/die effects, so a deterministic next-state map needs extra choices/outcomes specified somewhere. A mathematically clean version should fix a date-specific ruleset/card pool/rulings corpus and then use either a computable relation T(C,M,C') of possible successors or a computable function F(s,m,r) on complete states with explicit random-input data r. ([arxiv.org](https://arxiv.org/pdf/2603.02863v1))
+
+Reasoning
+The key internal mismatch is this: Conjecture 1 speaks of a function sending a configuration and a legal move to “the” consequent configuration, but Remark 3.7 later uses a computable predicate t(C,C',M) saying that C' is a legitimate successor of C under move M. That predicate formulation is weaker, and it is the natural object once configurations are information-states rather than complete physical states. ([arxiv.org](https://arxiv.org/pdf/2603.02863v1))
+
+Here is a concrete counterexample. Take a legal information-state C at the start of a Draw Phase in which the active player’s Deck is face-down and its exact order is unknown to that player. Such states exist because Decks are shuffled thoroughly and placed face-down, players draw from the top of the Deck, and the rulebook says that while shuffling you may not look at the cards being shuffled. The Fast Effect Timing page also lists “Draw a card for your normal draw during the Draw Phase” as one of the turn player’s legal actions. Now choose C so that there are two complete physical states s_a and s_b consistent with that same information-state C, identical except that the top card of the Deck is a in s_a and b ≠ a in s_b. Let M be the legal move “perform your normal draw.” Then the successor information-state from s_a has a newly in hand, while the successor information-state from s_b has b newly in hand. Those successor configurations are different, so there is no single value F(C,M). Therefore the claimed map is not a function. ([yugioh-card.com](https://www.yugioh-card.com/eu/wp-content/uploads/2022/07/Rulebook_v9_en.pdf))
+
+Even if one repairs the first issue by redefining “configuration” to mean a complete omniscient state, the statement is still incomplete as a deterministic function of just state and move. The official rulebook explicitly notes that some cards require coin tosses or die rolls, and shuffles likewise generate multiple possible successors unless those outcomes are included in the input. So the exact conjecture fails under the paper’s semantics, and under a full-state semantics it still needs extra outcome data to become well-defined. I cannot rigorously prove that repaired version from the available official materials. ([yugioh-card.com](https://www.yugioh-card.com/eu/wp-content/uploads/2022/07/Rulebook_v9_en.pdf))
+
+Literature overlap
+I did not find a prior paper or official source that already gives this exact Yu-Gi-Oh counterexample based on the paper’s information-state definition, so the specific disconfirmation above appears relatively novel.
+
+But the conjectural template is clearly close to existing literature. Churchill, Biderman, and Herrick already state a very similar transition-computability conjecture for Magic: The Gathering, and the Yu-Gi-Oh paper explicitly says it is following that discussion. A nearby but distinct result is Chatterjee and Ibsen-Jensen’s work on legality of a single step in Magic, which studies move-legality rather than a deterministic next-state function. So my a/b/c classification is: not (a) nearly exact prior Yu-Gi-Oh solution; yes (b) a close version exists in the literature; and the particular refutation given here is closest to (c), i.e. relatively novel. ([toothycat.net](https://www.toothycat.net/~hologram/Magic/LIPIcs.FUN.2021.9.pdf))
+
+Sources
+Nicolosi, Pisciotta, Bresolin, “Optimal play in Yu-Gi-Oh! TCG is hard” (arXiv:2603.02863v1), especially Conjecture 1, Definitions 3.1 and 3.4, and Remark 3.7. ([arxiv.org](https://arxiv.org/pdf/2603.02863v1))
+
+Konami Official Rulebook v9.01, especially the rules on Decks being face-down, pre-duel shuffling/cutting, drawing from the top of the Deck, the Draw Phase, and shuffling. ([yugioh-card.com](https://www.yugioh-card.com/eu/wp-content/uploads/2022/07/Rulebook_v9_en.pdf))
+
+Konami “Fast Effect Timing,” especially the list of legal turn-player actions including the normal Draw-Phase draw. ([yugioh-card.com](https://www.yugioh-card.com/en/play/fast-effect-timing/))
+
+Konami Judge FAQ, Tournament Policy v2.5, and Problem-Solving Card Text page, showing that official gameplay semantics are distributed across multiple current documents and that policy documents are updated over time. ([yugioh-card.com](https://www.yugioh-card.com/en/judges/judge-faq/))
+
+Churchill, Biderman, Herrick, “Magic: The Gathering Is Turing Complete.” ([toothycat.net](https://www.toothycat.net/~hologram/Magic/LIPIcs.FUN.2021.9.pdf))
+
+Chatterjee and Ibsen-Jensen, “The complexity of deciding legality of a single step of Magic: The Gathering.” ([research-explorer.ista.ac.at](https://research-explorer.ista.ac.at/record/478?utm_source=openai))","[{""kind"": ""output_citation"", ""title"": ""Optimal play in Yu-Gi-Oh! TCG is hard"", ""url"": ""https://arxiv.org/pdf/2603.02863v1""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://www.yugioh-card.com/eu/wp-content/uploads/2022/07/Rulebook_v9_en.pdf""}, {""kind"": ""output_citation"", ""title"": ""Magic: The Gathering Is Turing Complete"", ""url"": ""https://www.toothycat.net/~hologram/Magic/LIPIcs.FUN.2021.9.pdf""}, {""kind"": ""output_citation"", ""title"": ""Fast Effect Timing \u2013 Yu-Gi-Oh!"", ""url"": ""https://www.yugioh-card.com/en/play/fast-effect-timing/""}, {""kind"": ""output_citation"", ""title"": ""Konami Judge Program FAQ \u2013 Yu-Gi-Oh! TRADING CARD GAME"", ""url"": ""https://www.yugioh-card.com/en/judges/judge-faq/""}, {""kind"": ""output_citation"", ""title"": ""The complexity of deciding legality of a single step of magic: The gathering"", ""url"": ""https://research-explorer.ista.ac.at/record/478?utm_source=openai""}]",,2026-03-08T22:35:53Z,2026-03-08T22:43:54Z,2603.02863v1,Optimal play in Yu-Gi-Oh! TCG is hard,"[""Orazio Nicolosi"", ""Federico Pisciotta"", ""Lorenzo Bresolin""]",http://arxiv.org/abs/2603.02863v1,https://arxiv.org/pdf/2603.02863v1,https://arxiv.org/e-print/2603.02863v1,0.main.tex,155,157,The function that maps a game configuration and a legal move to the consequent configuration in the \emph{Yu-Gi-Oh! TCG} is computable.,The function that maps a game configuration and a legal move to the consequent configuration in the Yu-Gi-Oh! TCG is computable.,0.8,0.22,Orazio Nicolosi; Federico Pisciotta; Lorenzo Bresolin
+12,587,resp_0fcfba46330cd0130069adf9c99d6481958cb30d80980f7ee6,completed,"Verdict
+
+Partially confirmed, but not fully settled. I can confirm Conjecture 587 under the additional hypothesis gcd(n,6)=1: the new paper arXiv:2602.07346v1 proves that any perfect Prishchepov group is either of type \widetilde{\mathfrak Z} or falls into one of the “obvious” congruence classes k ≡ 1, k ≡ 1+q, r ≡ 0, s ≡ 0 (mod n); under the conjecture’s hypotheses s=r-1, 2 ≤ r < n, and k not ≡ 1, 1+q (mod n), those alternatives are excluded, so perfection forces type \widetilde{\mathfrak Z}. But I cannot confirm or disconfirm the unrestricted conjecture, because the same paper explicitly leaves the remaining cases gcd(n,6) ≠ 1 open, i.e. the cases where n has a 2- or 3-factor. I found no counterexample in the sources checked, and the 2021 paper reports computational verification up to n ≤ 340. ([arxiv.org](https://arxiv.org/pdf/2602.07346v1))
+
+Well-specifiedness
+
+The conjecture is mathematically well specified once one imports the paper’s definitions: P(r,n,k,s,q) is the cyclically presented Prishchepov group with defining word given in the paper, and “type \widetilde{\mathfrak Z}” means that either q(r-s) ≡ 2(k-1) (mod n) or q(r+s) ≡ 0 (mod n). In that framework, the hypotheses are clear and natural. However, the quoted prompt by itself is not fully self-contained: without those external definitions, and with the slightly garbled plain-text transcription, a reader cannot parse the statement standalone. Also, the exclusions k not ≡ 1 and k not ≡ 1+q mod n are essential, because those are among the already-understood obvious perfect/trivial cases isolated in the earlier paper. ([arxiv.org](https://arxiv.org/pdf/2602.07346v1))
+
+Reasoning
+
+The key background fact is that the 2021 paper already proves the classification of perfect Prishchepov groups once the type \widetilde{\mathfrak Z} condition is assumed: for gcd(n,k-1,q)=1 and r ≥ s ≥ 1, if P(r,n,k,s,q) is of type \widetilde{\mathfrak Z}, then perfectness is equivalent to |r-s|=1, gcd(n,q)=1, and gcd(k-1-qr,n)=1. That same paper formulates Conjecture 1.3, which is exactly the conjecture in your prompt. So the unresolved issue is not sufficiency inside type \widetilde{\mathfrak Z}; it is the necessity of type \widetilde{\mathfrak Z}. ([arxiv.org](https://arxiv.org/pdf/2010.13000))
+
+The 2026 paper attacks precisely that missing necessity direction. It reduces to the case q=1 and s=r-1 via the standard free-product/isomorphism reductions, then studies the reduced representer polynomial
+F(t) = sum_{i=0}^{r-1} t^i - t^{k-1} sum_{i=0}^{r-2} t^i.
+Using the cyclotomic-unit criterion for unimodular circulants, Odoni’s lemma relating F(ζ) and F(ζ^{-1}), and a Newton-Girard argument on the resulting four-term root-of-unity identities, it proves Theorem A for gcd(n,6)=1. Under the conjecture’s own hypotheses, Theorem A leaves only the type \widetilde{\mathfrak Z} alternative, so the conjecture is indeed proved on the full coprime-to-6 range. ([arxiv.org](https://arxiv.org/pdf/2602.07346v1))
+
+I then tried to extend this by hand to the unresolved cases. In the reduced case q=1, the divisor d=2 gives no contradiction at all: evaluating the same F at -1 gives F(-1)=1 whenever n is even. If 4 divides n, evaluating at i gives only partial congruence information: for r ≡ 2 or 3 (mod 4), unitness of F(i) forces k ≡ 2 (mod 4), but this is far weaker than a complete proof. Likewise, when 3 divides n, evaluation at a primitive cube root gives only partial residue restrictions, not a contradiction. So I do not have either a proof or a counterexample in the remaining 2- and 3-primary cases. This fits the authors’ own conclusion that those are exactly the open cases left after their method. ([arxiv.org](https://arxiv.org/pdf/2602.07346v1))
+
+Therefore the correct overall conclusion is: confirmed for gcd(n,6)=1, unresolved in general, and not refuted by any explicit example I found. The 2021 paper’s computational verification up to n ≤ 340 is evidence in favor of the conjecture, but it is not a proof. ([arxiv.org](https://arxiv.org/pdf/2010.13000))
+
+Literature overlap
+
+For the exact unrestricted conjecture, my classification is (b): a close version exists in the literature. It is not (a) “nearly exact already in the literature” for the full statement, because the 2026 paper explicitly leaves gcd(n,6) ≠ 1 open. But it is very close: the 2021 paper proves the full perfectness criterion under the extra assumption “of type \widetilde{\mathfrak Z}”, and the 2026 paper proves the missing necessity direction for all n coprime to 6. So the full conjecture is an almost-completed program, not a wholly untouched question. ([arxiv.org](https://arxiv.org/pdf/2010.13000))
+
+If one asks instead about the partial solution I can actually certify, namely the gcd(n,6)=1 case, then that is already in category (a): it is essentially exactly Theorem A of arXiv:2602.07346v1 applied to the special case s=r-1. ([arxiv.org](https://arxiv.org/pdf/2602.07346v1))
+
+There is also substantial older overlap in special cases. The 2021 paper records computational verification up to n ≤ 340, and special families were already understood: in particular the generalized Fibonacci/trinomial case r=2 comes from the earlier classification of unimodular circulants associated with trinomials, and the 2021 paper also derives the k=3 case via its symmetry lemma and Corollary 5.2. So a future full proof would still be novel, but as the completion of an already-developed body of work rather than as a completely new phenomenon. ([arxiv.org](https://arxiv.org/pdf/2010.13000))
+
+Sources
+
+Layla Sorkatti and Ihechukwu Chinyere, On the Classification of Perfect Prishchepov Groups, arXiv:2602.07346v1 (2026): definition of the family and type \widetilde{\mathfrak Z}, statement/proof of Theorem A, and discussion of the remaining open cases. ([arxiv.org](https://arxiv.org/pdf/2602.07346v1))
+
+Ihechukwu Chinyere and Bernard Oduoku Bainson, Perfect Prishchepov groups, J. Algebra 588 (2021), arXiv:2010.13000v2: Conjecture 1.3, Theorem C (the type \widetilde{\mathfrak Z} classification), Corollary 5.2, and the computational verification up to n ≤ 340. ([arxiv.org](https://arxiv.org/pdf/2010.13000))
+
+Gerald Williams, Unimodular integer circulants associated with trinomials (trinomial/generalized-Fibonacci background for the r=2 special case). ([repository.essex.ac.uk](https://repository.essex.ac.uk/1810/1/UnimodularIntCirculants.pdf))","[{""kind"": ""output_citation"", ""title"": ""On the Classification of Perfect Prishchepov Groups"", ""url"": ""https://arxiv.org/pdf/2602.07346v1""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://arxiv.org/pdf/2010.13000""}, {""kind"": ""output_citation"", ""title"": """", ""url"": ""https://repository.essex.ac.uk/1810/1/UnimodularIntCirculants.pdf""}]",,2026-03-08T22:35:54Z,2026-03-08T22:44:35Z,2602.07346v1,On the Classification of Perfect Prishchepov Groups,"[""Layla Sorkatti"", ""Ihechukwu Chinyere""]",http://arxiv.org/abs/2602.07346v1,https://arxiv.org/pdf/2602.07346v1,https://arxiv.org/e-print/2602.07346v1,ClassificationPPG.tex,193,197,"{MR4315549}}]\label{conj}
+Let \(n,k,q \geq 1\) and \(2 \leq r < n\) with \(\gcd(n,k-1,q)=1\).  
+Suppose \(k \not\equiv 1 \pmod{n}\) and \(k \not\equiv 1+q \pmod{n}\).  
+If \(P(r,n,k,r-1,q)\) is perfect, then it is of type \(\widetilde{\mathfrak{Z}}\).","MR4315549 ] Let \(n,k,q 1\) and \(2 r < n\) with \((n,k-1,q)=1\). Suppose \(k 1 n\) and \(k 1+q n\). If \(P(r,n,k,r-1,q)\) is perfect, then it is of type \( Z \).",0.75,0.6,Layla Sorkatti; Ihechukwu Chinyere
