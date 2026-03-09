@@ -1,10 +1,8 @@
-# Solver Attempt Audit
+# Solver Attempt Audit (using GPT 5.4 Thinking xhigh, in codex)
 
-Date: 2026-03-09
+Date: 2026-03-09 
 
-## Bottom Line
-
-This 20-attempt combined batch now has 6 strong settlement-quality results, 2 additional as-written statement failures that are really specification/formalization problems, 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, and 6 unresolved outcomes.
+**Summary:** This 20-attempt combined batch now has 6 strong settlement-quality results, 2 additional as-written statement failures that are really specification/formalization problems, 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, and 6 unresolved outcomes.
 
 The strongest clear results are:
 
