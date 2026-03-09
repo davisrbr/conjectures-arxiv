@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections import Counter
 import csv
-from datetime import datetime
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import shutil
@@ -9,6 +10,7 @@ import sqlite3
 from typing import Any
 
 from .conjecture_extractor import ExtractedConjecture
+from .license_policy import PUBLICATION_POLICY_VERSION, publication_metadata_from_license
 from .models import Paper
 
 
@@ -16,7 +18,7 @@ TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 def utc_now_str() -> str:
-    return datetime.utcnow().strftime(TIMESTAMP_FMT)
+    return datetime.now(UTC).strftime(TIMESTAMP_FMT)
 
 
 class Database:
@@ -369,6 +371,48 @@ class Database:
             "conjectures_jsonl": conjectures_jsonl,
             "conjectures_csv": conjectures_csv,
             "papers_jsonl": papers_jsonl,
+        }
+
+    def export_huggingface_dataset(
+        self,
+        output_dir: str | Path,
+        *,
+        repo_id: str = "",
+    ) -> dict[str, Path]:
+        out_dir = Path(output_dir)
+        data_dir = out_dir / "data"
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        public_conjectures = self._public_conjecture_records()
+        public_papers = self._public_paper_records(public_conjectures)
+        manifest = self._publication_manifest(public_conjectures, public_papers, repo_id=repo_id)
+
+        conjectures_jsonl = data_dir / "conjectures.jsonl"
+        conjectures_csv = data_dir / "conjectures.csv"
+        papers_jsonl = data_dir / "papers.jsonl"
+        papers_csv = data_dir / "papers.csv"
+        manifest_json = data_dir / "publication_manifest.json"
+        readme_path = out_dir / "README.md"
+
+        self._write_jsonl(conjectures_jsonl, public_conjectures)
+        self._write_csv(conjectures_csv, public_conjectures)
+        self._write_jsonl(papers_jsonl, public_papers)
+        self._write_csv(papers_csv, public_papers)
+        self._write_json(manifest_json, manifest)
+        readme_path.write_text(
+            self._build_huggingface_readme(manifest, repo_id=repo_id),
+            encoding="utf-8",
+        )
+
+        return {
+            "hf_readme": readme_path,
+            "hf_conjectures_jsonl": conjectures_jsonl,
+            "hf_conjectures_csv": conjectures_csv,
+            "hf_papers_jsonl": papers_jsonl,
+            "hf_papers_csv": papers_csv,
+            "hf_manifest_json": manifest_json,
         }
 
     def list_conjectures_for_llm(
@@ -982,6 +1026,117 @@ class Database:
             "papers_parquet": papers_dir,
         }
 
+    def _public_conjecture_records(self) -> list[dict[str, Any]]:
+        latest_labels = self._latest_llm_label_records()
+        records = []
+        for record in self._joined_conjecture_records():
+            public_record = record.copy()
+            public_record.update(
+                latest_labels.get(
+                    int(public_record["id"]),
+                    self._empty_latest_llm_label_record(),
+                )
+            )
+            public_record["text_withheld"] = not bool(public_record["publication_text_allowed"])
+            if public_record["text_withheld"]:
+                public_record["body_tex"] = ""
+                public_record["plain_text"] = ""
+            records.append(public_record)
+        return records
+
+    def _public_paper_records(self, public_conjectures: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        paper_counts: dict[str, Counter[str]] = {}
+        for record in public_conjectures:
+            arxiv_id = str(record["arxiv_id"])
+            counts = paper_counts.setdefault(arxiv_id, Counter())
+            counts["total"] += 1
+            counts[str(record["publication_decision"])] += 1
+
+        papers = []
+        for record in self._paper_records():
+            counts = paper_counts.get(str(record["arxiv_id"]), Counter())
+            public_record = record.copy()
+            public_record["conjecture_count"] = counts.get("total", 0)
+            public_record["conjectures_with_public_text"] = counts.get("publish_text", 0)
+            public_record["conjectures_withheld_text"] = counts.get("withhold_text", 0)
+            papers.append(public_record)
+        return papers
+
+    def _publication_manifest(
+        self,
+        public_conjectures: list[dict[str, Any]],
+        public_papers: list[dict[str, Any]],
+        *,
+        repo_id: str,
+    ) -> dict[str, Any]:
+        decision_counts = Counter(str(record["publication_decision"]) for record in public_conjectures)
+        reason_counts = Counter(str(record["publication_text_reason"]) for record in public_conjectures)
+        family_counts = Counter(str(record["license_family"]) for record in public_conjectures)
+        license_counts = Counter(str(record["normalized_license_url"] or "(missing)") for record in public_conjectures)
+        labeled_count = sum(1 for record in public_conjectures if record["latest_label"] is not None)
+
+        return {
+            "generated_at": utc_now_str(),
+            "repo_id": repo_id,
+            "publication_policy_version": PUBLICATION_POLICY_VERSION,
+            "papers_total": len(public_papers),
+            "conjectures_total": len(public_conjectures),
+            "conjectures_with_public_text": decision_counts.get("publish_text", 0),
+            "conjectures_withheld_text": decision_counts.get("withhold_text", 0),
+            "conjectures_with_latest_label": labeled_count,
+            "conjectures_by_decision": dict(sorted(decision_counts.items())),
+            "conjectures_by_reason": dict(sorted(reason_counts.items())),
+            "conjectures_by_license_family": dict(sorted(family_counts.items())),
+            "conjectures_by_license_url": dict(sorted(license_counts.items())),
+        }
+
+    def _build_huggingface_readme(self, manifest: dict[str, Any], *, repo_id: str) -> str:
+        repo_line = f"- Target repo: `{repo_id}`\n" if repo_id else ""
+        return (
+            "---\n"
+            "license: other\n"
+            "pretty_name: Conjectures from Recent arXiv Math Papers\n"
+            "tags:\n"
+            "- mathematics\n"
+            "- arxiv\n"
+            "- license-filtered\n"
+            "---\n\n"
+            "# Conjectures from Recent arXiv Math Papers\n\n"
+            "This dataset contains conjecture candidates extracted from recent arXiv math papers.\n"
+            "It is prepared from the local SQLite snapshot in this repository.\n\n"
+            "## Snapshot Summary\n\n"
+            f"- Papers: {manifest['papers_total']}\n"
+            f"- Conjectures: {manifest['conjectures_total']}\n"
+            f"- Conjectures with text published: {manifest['conjectures_with_public_text']}\n"
+            f"- Conjectures with text withheld: {manifest['conjectures_withheld_text']}\n"
+            f"- Conjectures with latest LLM label metadata: {manifest['conjectures_with_latest_label']}\n"
+            f"- Publication policy version: `{manifest['publication_policy_version']}`\n"
+            f"{repo_line}"
+            "\n"
+            "## Licensing Policy\n\n"
+            "This publication pipeline is intentionally aggressive by default:\n"
+            "if a paper license is missing or unfamiliar, the conjecture text is still published.\n"
+            "Text is withheld only when the license is clearly restrictive for broad republication.\n\n"
+            "This Hugging Face release is prepared as a noncommercial dataset release, so "
+            "`CC BY-NC*` material is included.\n\n"
+            "Current withhold rules:\n\n"
+            "- arXiv non-exclusive distribution license (`arxiv.org/licenses/nonexclusive-distrib/1.0/`)\n\n"
+            "When text is withheld, the record still includes the paper identifier, URLs, and source location.\n"
+            "This policy metadata is exposed per record in `publication_decision`, `publication_text_reason`, "
+            "and `publication_policy_version`.\n\n"
+            "## Labels and Scores\n\n"
+            "The public conjecture rows also include the newest available LLM label metadata for each conjecture.\n"
+            "If multiple label runs exist, the latest one wins.\n"
+            "These fields are preserved even when the conjecture text itself is withheld.\n\n"
+            "## Files\n\n"
+            "- `data/conjectures.jsonl`: public conjecture records with text redacted only when policy requires it\n"
+            "- `data/papers.jsonl`: paper metadata plus counts of redacted versus published conjectures per paper\n"
+            "- `data/publication_manifest.json`: aggregate counts for the publication decision pipeline\n\n"
+            "## Notes\n\n"
+            "- `license: other` is used because the dataset mixes paper-level licenses and publication decisions.\n"
+            "- This is operational guidance for dataset publication, not legal advice.\n"
+        )
+
     def _joined_conjecture_records(self) -> list[dict[str, Any]]:
         cursor = self.conn.execute(
             """
@@ -1016,32 +1171,32 @@ class Database:
 
         records = []
         for row in cursor.fetchall():
-            records.append(
-                {
-                    "id": row[0],
-                    "arxiv_id": row[1],
-                    "title": row[2],
-                    "published_at": row[3],
-                    "updated_at": row[4],
-                    "authors": json.loads(row[5]),
-                    "categories": json.loads(row[6]),
-                    "primary_category": row[7],
-                    "doi": row[8],
-                    "journal_ref": row[9],
-                    "comments": row[10],
-                    "abs_url": row[11],
-                    "pdf_url": row[12],
-                    "source_url": row[13],
-                    "license_url": row[14],
-                    "source_file": row[15],
-                    "index_in_file": row[16],
-                    "start_line": row[17],
-                    "end_line": row[18],
-                    "body_tex": row[19],
-                    "plain_text": row[20],
-                    "content_hash": row[21],
-                }
-            )
+            record = {
+                "id": row[0],
+                "arxiv_id": row[1],
+                "title": row[2],
+                "published_at": row[3],
+                "updated_at": row[4],
+                "authors": json.loads(row[5]),
+                "categories": json.loads(row[6]),
+                "primary_category": row[7],
+                "doi": row[8],
+                "journal_ref": row[9],
+                "comments": row[10],
+                "abs_url": row[11],
+                "pdf_url": row[12],
+                "source_url": row[13],
+                "license_url": row[14],
+                "source_file": row[15],
+                "index_in_file": row[16],
+                "start_line": row[17],
+                "end_line": row[18],
+                "body_tex": row[19],
+                "plain_text": row[20],
+                "content_hash": row[21],
+            }
+            record.update(publication_metadata_from_license(str(record["license_url"])))
+            records.append(record)
         return records
 
     def _paper_records(self) -> list[dict[str, Any]]:
@@ -1071,27 +1226,91 @@ class Database:
 
         records = []
         for row in cursor.fetchall():
-            records.append(
-                {
-                    "arxiv_id": row[0],
-                    "title": row[1],
-                    "summary": row[2],
-                    "authors": json.loads(row[3]),
-                    "categories": json.loads(row[4]),
-                    "primary_category": row[5],
-                    "doi": row[6],
-                    "journal_ref": row[7],
-                    "comments": row[8],
-                    "published_at": row[9],
-                    "updated_at": row[10],
-                    "abs_url": row[11],
-                    "pdf_url": row[12],
-                    "source_url": row[13],
-                    "license_url": row[14],
-                    "ingested_at": row[15],
-                }
-            )
+            record = {
+                "arxiv_id": row[0],
+                "title": row[1],
+                "summary": row[2],
+                "authors": json.loads(row[3]),
+                "categories": json.loads(row[4]),
+                "primary_category": row[5],
+                "doi": row[6],
+                "journal_ref": row[7],
+                "comments": row[8],
+                "published_at": row[9],
+                "updated_at": row[10],
+                "abs_url": row[11],
+                "pdf_url": row[12],
+                "source_url": row[13],
+                "license_url": row[14],
+                "ingested_at": row[15],
+            }
+            record.update(publication_metadata_from_license(str(record["license_url"])))
+            records.append(record)
         return records
+
+    def _latest_llm_label_records(self) -> dict[int, dict[str, Any]]:
+        cursor = self.conn.execute(
+            """
+            SELECT
+                id,
+                conjecture_id,
+                model,
+                label,
+                confidence,
+                interestingness_score,
+                interestingness_confidence,
+                interestingness_rationale,
+                viability_score,
+                viability_confidence,
+                viability_rationale,
+                assessment_version,
+                rationale,
+                evidence_snippet,
+                created_at
+            FROM conjecture_llm_labels
+            ORDER BY created_at DESC, id DESC
+            """
+        )
+
+        latest_by_conjecture: dict[int, dict[str, Any]] = {}
+        for row in cursor.fetchall():
+            conjecture_id = int(row[1])
+            if conjecture_id in latest_by_conjecture:
+                continue
+            latest_by_conjecture[conjecture_id] = {
+                "latest_label_model": row[2],
+                "latest_label": row[3],
+                "latest_label_confidence": row[4],
+                "latest_interestingness_score": row[5],
+                "latest_interestingness_confidence": row[6],
+                "latest_interestingness_rationale": row[7],
+                "latest_viability_score": row[8],
+                "latest_viability_confidence": row[9],
+                "latest_viability_rationale": row[10],
+                "latest_assessment_version": row[11],
+                "latest_label_rationale": row[12],
+                "latest_evidence_snippet": row[13],
+                "latest_labeled_at": row[14],
+            }
+        return latest_by_conjecture
+
+    @staticmethod
+    def _empty_latest_llm_label_record() -> dict[str, Any]:
+        return {
+            "latest_label_model": None,
+            "latest_label": None,
+            "latest_label_confidence": None,
+            "latest_interestingness_score": None,
+            "latest_interestingness_confidence": None,
+            "latest_interestingness_rationale": None,
+            "latest_viability_score": None,
+            "latest_viability_confidence": None,
+            "latest_viability_rationale": None,
+            "latest_assessment_version": None,
+            "latest_label_rationale": None,
+            "latest_evidence_snippet": None,
+            "latest_labeled_at": None,
+        }
 
     @staticmethod
     def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
@@ -1099,6 +1318,10 @@ class Database:
             for record in records:
                 handle.write(json.dumps(record, ensure_ascii=False))
                 handle.write("\n")
+
+    @staticmethod
+    def _write_json(path: Path, payload: dict[str, Any]) -> None:
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
     @staticmethod
     def _write_csv(path: Path, records: list[dict[str, Any]]) -> None:

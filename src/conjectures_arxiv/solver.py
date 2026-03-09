@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 import json
 import time
 from typing import Any
@@ -284,4 +284,4 @@ class OpenAIConjectureSolver:
             timestamp = float(value)
         except (TypeError, ValueError):
             return None
-        return datetime.utcfromtimestamp(timestamp).strftime(TIMESTAMP_FMT)
+        return datetime.fromtimestamp(timestamp, UTC).strftime(TIMESTAMP_FMT)

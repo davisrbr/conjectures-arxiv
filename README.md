@@ -2,7 +2,9 @@
 
 This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a clean, shareable dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-In an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 proofs that might hold up: 2 proposed confirmations of open conjectures, and 4 apparent disconfirmations**. There are  also several potentially useful partial results. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the strongest results is in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are model-reported results, not independently verified proofs or counterexamples.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 798 conjecture candidates, including 676 labeled `real_open_conjecture`, from papers published between February 2, 2026 and March 4, 2026.
+
+In an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 proofs that might hold up: 2 proposed confirmations of open conjectures, and 4 apparent disconfirmations**. There are also several potentially useful partial results. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the strongest results is in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are model-reported results, not independently verified proofs or counterexamples.
 
 ## Pipeline
 
@@ -24,7 +26,9 @@ pip install -e '.[dev,llm]'
 Optional extras:
 
 - Add `parquet` if you want Parquet export support: `pip install -e '.[dev,llm,parquet]'`
+- Add `huggingface` if you want Hugging Face uploads: `pip install -e '.[dev,llm,huggingface]'`
 - Set `OPENAI_API_KEY` before running `filter-llm` or `solve-llm`
+- Set `HF_TOKEN` before running `publish-hf` unless you already have a cached Hugging Face login
 - Configure AWS credentials before running `upload-s3`
 
 ## Quick Start
@@ -106,23 +110,69 @@ conjectures-arxiv upload-s3 \
   --prefix math-conjectures
 ```
 
+Prepare a public Hugging Face snapshot with license-aware redaction:
+
+```bash
+conjectures-arxiv export-hf \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/huggingface_dataset \
+  --repo-id your-org/conjectures-arxiv
+```
+
+Dry-run the full Hugging Face publish pipeline without uploading:
+
+```bash
+conjectures-arxiv publish-hf \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/huggingface_dataset \
+  --repo-id your-org/conjectures-arxiv \
+  --dry-run
+```
+
+Publish to Hugging Face when ready:
+
+```bash
+export HF_TOKEN=...
+conjectures-arxiv publish-hf \
+  --db-path data/conjectures.sqlite \
+  --output-dir data/huggingface_dataset \
+  --repo-id your-org/conjectures-arxiv
+```
+
+## Hugging Face License Policy
+
+The public Hugging Face snapshot is intentionally aggressive by default:
+
+- If the paper license is missing or unrecognized, the conjecture text is still published.
+- If the license is clearly restrictive for broad republication, the conjecture text is withheld and only paper references are published.
+- This Hugging Face release is treated as a noncommercial release, so `CC BY-NC*` papers are published.
+
+Current withhold rules:
+
+- arXiv non-exclusive distribution license (`arxiv.org/licenses/nonexclusive-distrib/1.0/`)
+
+The generated snapshot includes per-record decision fields like `publication_decision`, `publication_text_reason`, and `publication_policy_version`, plus a `publication_manifest.json` summary.
+The conjecture rows also include the newest available LLM label metadata per conjecture, including the latest label, confidence, interestingness score, and viability score.
+
 ## Current Snapshot
 
-Local canonical dataset:
+Latest local labeled dataset:
 
-- `data/conjectures_week_canonical_20260303.sqlite`
-- `data/exports_week_canonical_20260303/conjectures.jsonl`
-- `data/exports_week_canonical_20260303/conjectures.csv`
-- `data/exports_week_canonical_20260303/papers.jsonl`
-- `data/exports_week_canonical_20260303/real_conjectures_gpt-5-mini.jsonl`
-- `data/exports_week_canonical_20260303/real_conjectures_gpt-5-mini.csv`
+- `data/conjectures_month_live_20260306.sqlite`
+- `data/exports_month_live_20260306/conjectures.jsonl`
+- `data/exports_month_live_20260306/conjectures.csv`
+- `data/exports_month_live_20260306/papers.jsonl`
+- `data/exports_month_live_20260306/real_conjectures_gpt-5-mini.jsonl`
+- `data/exports_month_live_20260306/real_conjectures_gpt-5-mini.csv`
 
 Current totals:
 
-- `papers_seen=851`
-- `conjecture_candidates=160`
-- `real_open_conjecture=147`
-- `not_real_conjecture=13`
+- `papers_seen=4756`
+- `conjecture_candidates=798`
+- `real_open_conjecture=676`
+- `not_real_conjecture=119`
+- `uncertain=3`
+- `published_at_range=2026-02-02..2026-03-04`
 
 Latest S3 location:
 
@@ -159,6 +209,8 @@ Artifacts:
 - `src/conjectures_arxiv/llm_filter.py`: GPT-5 Mini labeling
 - `src/conjectures_arxiv/solver.py`: GPT-5.4 solver prompt and response handling
 - `src/conjectures_arxiv/database.py`: SQLite schema and exports
+- `src/conjectures_arxiv/license_policy.py`: publication license classification
+- `src/conjectures_arxiv/hf_publish.py`: Hugging Face dataset uploads
 - `src/conjectures_arxiv/s3_publish.py`: S3 publishing helpers
 
 ## Tests

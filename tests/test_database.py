@@ -8,10 +8,11 @@ import pytest
 
 from conjectures_arxiv.conjecture_extractor import ExtractedConjecture
 from conjectures_arxiv.database import Database
+from conjectures_arxiv.license_policy import PUBLICATION_POLICY_VERSION
 from conjectures_arxiv.models import Paper
 
 
-def _sample_paper() -> Paper:
+def _sample_paper(*, license_url: str = "http://creativecommons.org/licenses/by/4.0/") -> Paper:
     return Paper(
         arxiv_id="2603.00001v1",
         title="Test",
@@ -27,7 +28,7 @@ def _sample_paper() -> Paper:
         abs_url="https://arxiv.org/abs/2603.00001v1",
         pdf_url="https://arxiv.org/pdf/2603.00001v1.pdf",
         source_url="https://arxiv.org/e-print/2603.00001v1",
-        license_url="http://creativecommons.org/licenses/by/4.0/",
+        license_url=license_url,
     )
 
 
@@ -78,6 +79,10 @@ def test_database_insert_dedup_and_export(tmp_path) -> None:
     assert record["journal_ref"] == "J. Example Math. 10 (2026), 1-20"
     assert record["comments"] == "15 pages, 3 figures"
     assert record["license_url"] == "http://creativecommons.org/licenses/by/4.0/"
+    assert record["publication_text_allowed"] is True
+    assert record["publication_decision"] == "publish_text"
+    assert record["publication_text_reason"] == "creativecommons_license_treated_as_publishable"
+    assert record["publication_policy_version"] == PUBLICATION_POLICY_VERSION
 
     paper_lines = exported["papers_jsonl"].read_text(encoding="utf-8").strip().splitlines()
     assert len(paper_lines) == 1
@@ -87,6 +92,8 @@ def test_database_insert_dedup_and_export(tmp_path) -> None:
     assert paper_record["journal_ref"] == "J. Example Math. 10 (2026), 1-20"
     assert paper_record["comments"] == "15 pages, 3 figures"
     assert paper_record["license_url"] == "http://creativecommons.org/licenses/by/4.0/"
+    assert paper_record["publication_text_allowed"] is True
+    assert paper_record["publication_decision"] == "publish_text"
 
 
 def test_with_partitions_adds_year_month_fields() -> None:
@@ -243,6 +250,89 @@ def test_init_schema_migrates_papers_metadata_columns(tmp_path) -> None:
     assert "journal_ref" in columns
     assert "comments" in columns
     assert "license_url" in columns
+
+
+def test_export_huggingface_dataset_redacts_restricted_text(tmp_path) -> None:
+    db = Database(tmp_path / "conjectures.sqlite")
+    db.init_schema()
+    paper = _sample_paper(license_url="https://arxiv.org/licenses/nonexclusive-distrib/1.0/")
+    db.upsert_paper(paper)
+    db.insert_conjectures(paper.arxiv_id, [_sample_conjecture()])
+    conjecture_id = db.list_conjectures_for_llm(model="gpt-5-mini")[0]["conjecture_id"]
+    db.upsert_llm_label(
+        conjecture_id=int(conjecture_id),
+        model="gpt-5-mini",
+        label="real_open_conjecture",
+        confidence=0.82,
+        interestingness_score=0.65,
+        interestingness_confidence=0.62,
+        interestingness_rationale="First label.",
+        viability_score=0.41,
+        viability_confidence=0.4,
+        viability_rationale="First viability.",
+        assessment_version="test-v1",
+        rationale="First rationale.",
+        evidence_snippet="First snippet.",
+        raw_response_json='{"label":"real_open_conjecture"}',
+    )
+    db.upsert_llm_label(
+        conjecture_id=int(conjecture_id),
+        model="gpt-5",
+        label="real_open_conjecture",
+        confidence=0.91,
+        interestingness_score=0.88,
+        interestingness_confidence=0.86,
+        interestingness_rationale="Latest label.",
+        viability_score=0.73,
+        viability_confidence=0.71,
+        viability_rationale="Latest viability.",
+        assessment_version="test-v2",
+        rationale="Latest rationale.",
+        evidence_snippet="Latest snippet.",
+        raw_response_json='{"label":"real_open_conjecture","version":"latest"}',
+    )
+
+    exported = db.export_huggingface_dataset(tmp_path / "hf_dataset", repo_id="alice/conjectures-arxiv")
+    db.close()
+
+    conjecture_line = exported["hf_conjectures_jsonl"].read_text(encoding="utf-8").strip()
+    conjecture_record = json.loads(conjecture_line)
+    assert conjecture_record["publication_text_allowed"] is False
+    assert conjecture_record["publication_decision"] == "withhold_text"
+    assert conjecture_record["publication_text_reason"] == "arxiv_nonexclusive_distribution_license"
+    assert conjecture_record["license_family"] == "arxiv_nonexclusive_distrib"
+    assert conjecture_record["text_withheld"] is True
+    assert conjecture_record["body_tex"] == ""
+    assert conjecture_record["plain_text"] == ""
+    assert conjecture_record["abs_url"] == "https://arxiv.org/abs/2603.00001v1"
+    assert conjecture_record["latest_label_model"] == "gpt-5"
+    assert conjecture_record["latest_label"] == "real_open_conjecture"
+    assert conjecture_record["latest_label_confidence"] == 0.91
+    assert conjecture_record["latest_interestingness_score"] == 0.88
+    assert conjecture_record["latest_viability_score"] == 0.73
+    assert conjecture_record["latest_assessment_version"] == "test-v2"
+    assert conjecture_record["latest_label_rationale"] == "Latest rationale."
+    assert conjecture_record["latest_evidence_snippet"] == "Latest snippet."
+    assert conjecture_record["latest_labeled_at"]
+
+    paper_line = exported["hf_papers_jsonl"].read_text(encoding="utf-8").strip()
+    paper_record = json.loads(paper_line)
+    assert paper_record["conjecture_count"] == 1
+    assert paper_record["conjectures_with_public_text"] == 0
+    assert paper_record["conjectures_withheld_text"] == 1
+
+    manifest = json.loads(exported["hf_manifest_json"].read_text(encoding="utf-8"))
+    assert manifest["repo_id"] == "alice/conjectures-arxiv"
+    assert manifest["conjectures_total"] == 1
+    assert manifest["conjectures_with_public_text"] == 0
+    assert manifest["conjectures_withheld_text"] == 1
+    assert manifest["conjectures_with_latest_label"] == 1
+    assert manifest["publication_policy_version"] == PUBLICATION_POLICY_VERSION
+
+    readme_text = exported["hf_readme"].read_text(encoding="utf-8")
+    assert "alice/conjectures-arxiv" in readme_text
+    assert "nonexclusive-distrib" in readme_text
+    assert "latest LLM label metadata" in readme_text
 
 
 def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:
