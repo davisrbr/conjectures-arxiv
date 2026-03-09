@@ -2,6 +2,8 @@
 
 This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a clean, shareable dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 798 conjecture candidates, including 676 labeled `real_open_conjecture`, from papers published between February 2, 2026 and March 4, 2026.
+
 In an initial pilot, GPT-5.4 Thinking (xhigh) tackled 20 high-viability conjectures and produced 6 proofs we think might hold up: 2 proposed confirmations of open conjectures, and 4 apparent disconfirmations. There are  also several potentially useful partial results. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the strongest results is in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are model-reported results, not independently verified proofs or counterexamples.
 
 ## Pipeline
@@ -154,21 +156,23 @@ The conjecture rows also include the newest available LLM label metadata per con
 
 ## Current Snapshot
 
-Local canonical dataset:
+Latest local labeled dataset:
 
-- `data/conjectures_week_canonical_20260303.sqlite`
-- `data/exports_week_canonical_20260303/conjectures.jsonl`
-- `data/exports_week_canonical_20260303/conjectures.csv`
-- `data/exports_week_canonical_20260303/papers.jsonl`
-- `data/exports_week_canonical_20260303/real_conjectures_gpt-5-mini.jsonl`
-- `data/exports_week_canonical_20260303/real_conjectures_gpt-5-mini.csv`
+- `data/conjectures_month_live_20260306.sqlite`
+- `data/exports_month_live_20260306/conjectures.jsonl`
+- `data/exports_month_live_20260306/conjectures.csv`
+- `data/exports_month_live_20260306/papers.jsonl`
+- `data/exports_month_live_20260306/real_conjectures_gpt-5-mini.jsonl`
+- `data/exports_month_live_20260306/real_conjectures_gpt-5-mini.csv`
 
 Current totals:
 
-- `papers_seen=851`
-- `conjecture_candidates=160`
-- `real_open_conjecture=147`
-- `not_real_conjecture=13`
+- `papers_seen=4756`
+- `conjecture_candidates=798`
+- `real_open_conjecture=676`
+- `not_real_conjecture=119`
+- `uncertain=3`
+- `published_at_range=2026-02-02..2026-03-04`
 
 Latest S3 location:
 
