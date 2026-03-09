@@ -7,11 +7,9 @@ In an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 
 ## Pipeline
 
 1. Ingest recent arXiv math papers over a date range or rolling weekly window.
-2. Download source from arXiv, resolve `\input` and `\include`, and remove inactive TeX regions such as `%` comments and `\iffalse ... \fi`.
-3. Extract conjecture-like blocks and store them with paper metadata in SQLite, including arXiv category, DOI, journal reference, comments, and license when available.
-4. Optionally label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for interestingness and near-term viability.
-5. Optionally run GPT-5.4 solver attempts, with web search enabled, on the highest-priority real conjectures.
-6. Export JSONL/CSV, optionally export Parquet, and optionally publish artifacts to S3.
+2. Extract conjecture blocks and store them with paper metadata in SQLite, including arXiv category, DOI, journal reference, comments, and license when available.
+3. Label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for `interestingness` and near-term solution `viability`.
+4. Run GPT-5.4 Thinking (xhigh) to attempt solutions on a subset of the most tractable conjectures.
 
 ## Install
 
