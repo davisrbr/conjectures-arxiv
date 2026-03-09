@@ -11,7 +11,7 @@ The strongest clear results are:
 - The kernel quantile discrepancy rate conjecture is still likely false as written. The rank-1-kernel reduction to one-dimensional empirical `W_2` remains the cleanest disproof in the whole project.
 - The Stein-equation conjecture in the stochastic-approximation paper is likely false as written. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution.
 - The magnitude asymptotic for skew finite subsets of `\ell_1^N` is likely false as written. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
-- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean affirmative theorem-level result from the original 11-attempt batch.
+- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean affirmative theorem-level result in the current 20-attempt set.
 - The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is also likely false. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
 - The `\widetilde\Xi_n` zero-limit conjecture looks genuinely proved after obvious typo repairs. The coefficient-ratio argument forcing `\beta_n \to 0` is strong.
 
@@ -36,7 +36,7 @@ This remains the cleanest positive theorem closure in the full 20-attempt set. T
 
 ### Kernel quantile discrepancy and magnitude asymptotics
 
-These still look like the two clearest negative results from the first batch. Both rest on explicit reductions to simpler objects rather than vague plausibility arguments. Nothing in the new 9-run batch changes that assessment.
+These still look like the two clearest negative results in the full 20-attempt set. Both rest on explicit reductions to simpler objects rather than vague plausibility arguments.
 
 ## Strong Partial Results
 
