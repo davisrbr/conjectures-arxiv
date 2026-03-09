@@ -2,6 +2,8 @@
 
 This repository builds a shareable dataset of open conjectures from recent `math*` arXiv papers. It can ingest papers, expand TeX sources, extract conjecture-like environments, store them in SQLite, label candidates with GPT-5 Mini, and run GPT-5.4 solver attempts on the most tractable items.
 
+Our initial GPT-5.4 solver pilot on 20 high-viability conjectures produced 6 strong settlement-quality outcomes, including 2 apparent confirmations and 4 apparent disconfirmations, along with several useful partial results and a few statement-specification failures. These are model-reported mathematical results rather than independently verified proofs or counterexamples.
+
 ## Pipeline
 
 1. Ingest recent arXiv math papers over a date range or rolling weekly window.
