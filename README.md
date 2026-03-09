@@ -2,7 +2,7 @@
 
 This repository builds a shareable dataset of open conjectures from recent `math*` arXiv papers. It can ingest papers, expand TeX sources, extract conjecture-like environments, store them in SQLite, label candidates with GPT-5 Mini, and run GPT-5.4 solver attempts on the most tractable items.
 
-Our initial GPT-5.4 solver pilot on 20 high-viability conjectures produced 6 strong settlement-quality outcomes, including 2 apparent confirmations and 4 apparent disconfirmations, along with several useful partial results and a few statement-specification failures. The per-conjecture verdicts are listed in `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md` and `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv`, and the higher-level interpretation of which results look like the strongest confirmations and disconfirmations is in `data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md`. These are model-reported mathematical results rather than independently verified proofs or counterexamples.
+Our initial GPT-5.4 solver pilot on 20 high-viability conjectures produced 6 strong settlement-quality outcomes, including 2 apparent confirmations and 4 apparent disconfirmations, along with several useful partial results and a few statement-specification failures. The per-conjecture verdicts are listed in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md) and [solver_attempts_20_summary.csv](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv), and the higher-level interpretation of which results look like the strongest confirmations and disconfirmations is in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are model-reported mathematical results rather than independently verified proofs or counterexamples.
 
 ## Pipeline
 
@@ -145,11 +145,11 @@ These are model-reported results, not independently verified mathematical proofs
 
 Artifacts:
 
-- `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md`
-- `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv`
-- `data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md`
-- `data/exports_solver_status_20260309_attempts20/solver_attempts_20.jsonl`
-- `data/exports_solver_status_20260309_attempts20/solver_attempts_20.csv`
+- [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md)
+- [solver_attempts_20_summary.csv](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv)
+- [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md)
+- [solver_attempts_20.jsonl](data/exports_solver_status_20260309_attempts20/solver_attempts_20.jsonl)
+- [solver_attempts_20.csv](data/exports_solver_status_20260309_attempts20/solver_attempts_20.csv)
 
 ## S3 Access
 
