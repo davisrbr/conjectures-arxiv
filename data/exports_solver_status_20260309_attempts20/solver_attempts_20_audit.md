@@ -2,16 +2,18 @@
 
 Date: 2026-03-09 
 
-**Summary:** This 20-attempt combined batch now has 6 strong settlement-quality results, 2 additional as-written statement failures that are really specification/formalization problems, 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, and 6 unresolved outcomes.
+**Summary:** This 20-attempt combined batch now has 6 strong results that are likely to hold up.  
+
+The attempt also has 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, 2 specification/formalization issues, and 6 unresolved outcomes.
 
 The strongest clear results are:
 
-- The kernel quantile discrepancy rate conjecture is still likely false as written. The rank-1-kernel reduction to one-dimensional empirical `W_2` remains the cleanest disproof in the whole project.
-- The Stein-equation conjecture in the stochastic-approximation paper is likely false as written. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution.
-- The magnitude asymptotic for skew finite subsets of `\ell_1^N` is likely false as written. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
-- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean affirmative theorem-level result in the current 20-attempt set.
-- The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is also likely false. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
-- The `\widetilde\Xi_n` zero-limit conjecture looks genuinely proved after obvious typo repairs. The coefficient-ratio argument forcing `\beta_n \to 0` is strong.
+- The kernel quantile discrepancy rate conjecture is **likely a false conjecture**. The rank-1-kernel reduction to one-dimensional empirical `W_2` remains the cleanest disproof in the whole project.
+- The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution.
+- The magnitude asymptotic for skew finite subsets of `\ell_1^N` is **likely a false conjecture**. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
+- The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
+- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set.
+- The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong.
 
 Two more outputs are useful, but they should be read as statement failures rather than theorem disproofs:
 
