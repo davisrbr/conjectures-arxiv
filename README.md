@@ -17,8 +17,16 @@ This project ingests recent `math*` arXiv papers, extracts conjecture blocks fro
 - Interestingness is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
 - Viability is computed only for `real_open_conjecture` items (not for `not_real_conjecture`/`uncertain`) to reduce compute.
 - Model context includes paper title, authors, abstract, conjecture text, and local source window (default `±20` lines).
+- Runs a GPT-5.4 solver stage on the most tractable conjectures (highest-viability `real_open_conjecture` items), with background web-enabled attempts to prove, disprove, or otherwise resolve them.
 - Retries malformed batch responses per item to avoid parser-artifact labels.
 - Exports JSONL/CSV and uploads to S3.
+
+## Current Solver Results
+
+- In the current 20-attempt GPT-5.4 solver pilot on the highest-priority viable conjectures, the model produced 6 strong settlement-quality outcomes: 2 confirmations and 4 disconfirmations.
+- It also produced 2 formalization failures, 4 partial-progress outcomes, 1 qualified confirmation, 1 "resolved in substance" draft question, and 6 unresolved outcomes.
+- These are model-reported results, not independently verified mathematical proofs or counterexamples.
+- See `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md` and `data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.csv`.
 
 ## Quick Start
 
@@ -51,6 +59,27 @@ conjectures-arxiv filter-llm \
   --export-real \
   --output-dir data/exports \
   --min-confidence 0.7
+```
+
+Attempt to resolve the most tractable conjectures:
+
+```bash
+export OPENAI_API_KEY=...
+conjectures-arxiv solve-llm \
+  --db-path data/conjectures.sqlite \
+  --label-model gpt-5-mini \
+  --limit 10
+```
+
+Check or export solver-attempt status:
+
+```bash
+export OPENAI_API_KEY=...
+conjectures-arxiv solve-status \
+  --db-path data/conjectures.sqlite \
+  --limit 10 \
+  --refresh-open \
+  --output-dir data/exports_solver_status
 ```
 
 Upload to S3:
@@ -107,6 +136,7 @@ Typical read-only permissions:
 - `src/conjectures_arxiv/source_fetcher.py`: source download/extraction
 - `src/conjectures_arxiv/conjecture_extractor.py`: conjecture parsing
 - `src/conjectures_arxiv/llm_filter.py`: GPT-5 Mini labeling
+- `src/conjectures_arxiv/solver.py`: GPT-5.4 solver prompt + Responses API helpers
 - `src/conjectures_arxiv/database.py`: SQLite schema + exports
 - `src/conjectures_arxiv/s3_publish.py`: S3 publishing
 

@@ -31,6 +31,22 @@ def test_latex_to_plain_text_strips_common_commands() -> None:
     assert plain == "A bold claim with and ."
 
 
+def test_latex_to_plain_text_keeps_basic_math_structure_and_drops_style_noise() -> None:
+    text = (
+        r"\begin{enumerate}"
+        r"\item The series $N\in\left\{8,12,16,28\right\}$ in Table~\ref{T:4.1}."
+        r"\item {\color{blue}{True by Theorem~\ref{thm}}}."
+        r"\end{enumerate}"
+    )
+    plain = latex_to_plain_text(text)
+
+    assert "N in" in plain
+    assert "8,12,16,28" in plain
+    assert "True by Theorem" in plain
+    assert "enumerate" not in plain
+    assert "blue" not in plain
+
+
 def test_extract_conjectures_from_newtheorem_custom_env() -> None:
     docs = [
         LatexDocument(filename="defs.tex", content=r"\newtheorem{mainconj}{Main Conjecture}"),
