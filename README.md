@@ -149,20 +149,6 @@ Artifacts:
 - [solver_attempts_20.jsonl](data/exports_solver_status_20260309_attempts20/solver_attempts_20.jsonl)
 - [solver_attempts_20.csv](data/exports_solver_status_20260309_attempts20/solver_attempts_20.csv)
 
-## S3 Access
-
-To request access, send the maintainer:
-
-- AWS account ID
-- IAM principal ARN
-- Requested level, usually `read-only`
-- Requested scope, usually `latest/*` or `runs/*`
-
-Typical read-only permissions:
-
-- `s3:ListBucket` on bucket `conjectures-arxiv-math-067542072602`
-- `s3:GetObject` on `math-conjectures/latest/*`
-
 ## Project Layout
 
 - `src/conjectures_arxiv/cli.py`: CLI entrypoints
