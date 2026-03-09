@@ -2,9 +2,9 @@
 
 Date: 2026-03-09 
 
-**Summary:** This 20-attempt combined batch now has 6 strong results that are likely to hold up.  
+**Summary:** This 20-attempt combined batch now has 6 results that are likely to hold up: four results showing that the conjecture is false and two results proving the conjecture.
 
-The attempt also has 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, 2 specification/formalization issues, and 6 unresolved outcomes.
+Of the rest of the 20 attempts, there are 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, 2 specification/formalization issues, and 6 unresolved outcomes.
 
 The strongest clear results are:
 
