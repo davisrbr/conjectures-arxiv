@@ -4,7 +4,7 @@ Date: 2026-03-09
 
 **Summary:** This 20-attempt combined batch now has 6 results that are likely to hold up: four results showing that the conjecture is false and two results proving the conjecture.
 
-Of the rest of the 20 attempts, there are 4 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, 2 specification/formalization issues, and 6 unresolved outcomes.
+Of the rest of the 20 attempts, there are 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question that is effectively already absorbed by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes.
 
 The strongest clear results are:
 
@@ -56,10 +56,6 @@ The solver did not finish all three formulas, but proving the odd-Fibonacci and 
 
 This result is useful but should be labeled carefully. The solver proved that the published dynamic program extends to coordinatewise maps `g_1,\dots,g_m` when each coordinate map is bijective. It also found that the recurrence scheme already breaks for noninjective coordinate maps. So the paper's broad claim is not proved, but the right repaired version looks real.
 
-### Optimal quasimodular Sturm bound
-
-The solver proved the complex-coefficient half: a level-1 quasimodular form is determined by its first `dim \widetilde M_{2k}` coefficients. That is substantial. But the paper's sharper mod-`m` statement over the full integral lattice remains open, and that is exactly where the paper itself says the real subtlety lies.
-
 ### Quarter-turn symmetric ASM polytope
 
 This stayed unresolved, but the solver did prove the conjectured dimension as an upper bound and checked the first nontrivial case `n=5`. That is not a settlement, but it is more useful than a bare shrug.
@@ -68,6 +64,12 @@ This stayed unresolved, but the solver did prove the conjectured dimension as an
 
 The solver did not prove the main leading-coefficient claim. What it did show is that the integrality half of the conjecture is largely formal once one grants the preceding eventual-polynomiality conjecture. So the actual mathematical content is narrower than the source paper's wording suggests: the hard part is the top-degree coefficient `5^k`.
 
+## Formalization Revisions
+
+### Optimal quasimodular Sturm bound: formalization attempt invalidated the proof sketch
+
+We now also have a Lean note for this attempt, but unlike the Stein and Xi notes, this one cuts against the original solver verdict. The note [../../formalization/QuasimodularSturmNotes.md](../../formalization/QuasimodularSturmNotes.md) records that the claimed complex-coefficient proof does not actually go through: the key elimination step uses only a counting statement about how many monomials have `q`-order at most `n`, and that is too weak to imply the existence of a diagonal basis. The formalization instead isolates the correct abstract diagonal criterion and checks low-weight evidence in the concrete `E_2,E_4,E_6` model. So this entry should no longer be scored as a partial confirmation; it moves back to the unresolved bucket.
+
 ## Still Unresolved
 
 These remain basically conservative unresolved answers:
@@ -75,6 +77,7 @@ These remain basically conservative unresolved answers:
 - Graham's rearrangement conjecture: substantial recent progress, but still not the full all-primes theorem.
 - The matroid universal-model conjecture from Frobenius-group gain graphs: plausible, but not settled.
 - The improved randomized range-finder constant: good reductions and special cases, but no decisive proof or counterexample.
+- The optimal quasimodular Sturm bound: the earlier claimed complex-half proof does not survive formalization.
 - The quarter-turn symmetric ASM dimension formula: upper bound only.
 - The Genocchi leading-coefficient conjecture: reduction only.
 - The Ramanujan `{8,12,16,28}` relation statement: still too draft-like and vague to count as resolved.
@@ -104,6 +107,6 @@ Then I would put the rest into narrower buckets:
 
 - formalization failures: Yu-Gi-Oh, cyclically covering subspaces,
 - qualified confirmation: Ramanujan `{25,45,85}`,
-- partials: Prishchepov, arrow-pattern formulas, Vigemers, quasimodular Sturm bound,
+- partials: Prishchepov, arrow-pattern formulas, Vigemers,
 - draft-resolved-in-substance: the `N=15` Ramanujan leftover,
-- unresolved: Graham, universal models for the Frobenius-gain-graph matroid class, the randomized range-finder constant, the Genocchi leading coefficient, the QTSASM dimension formula, and the remaining draft Ramanujan relation.
+- unresolved: Graham, universal models for the Frobenius-gain-graph matroid class, the randomized range-finder constant, the quasimodular Sturm bound, the Genocchi leading coefficient, the QTSASM dimension formula, and the remaining draft Ramanujan relation.
