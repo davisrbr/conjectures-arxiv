@@ -6,8 +6,8 @@ This note documents the Lean formalization attempt for Attempt 24, the claimed p
 
 The current Lean files are:
 
-- [QuasimodularSturm/DiagonalCriterion.lean](QuasimodularSturm/DiagonalCriterion.lean)
-- [QuasimodularSturm/Concrete.lean](QuasimodularSturm/Concrete.lean)
+- [../QuasimodularSturm/Sturm/DiagonalCriterion.lean](../QuasimodularSturm/Sturm/DiagonalCriterion.lean)
+- [../QuasimodularSturm/Sturm/Concrete.lean](../QuasimodularSturm/Sturm/Concrete.lean)
 
 What these files formalize is deliberately narrower than the original solver writeup.
 
@@ -53,4 +53,4 @@ So the right reading is:
 
 ## Verification
 
-The formalization is re-exported from [QuasimodularSturm.lean](QuasimodularSturm.lean), and `~/.elan/bin/lake build QuasimodularSturm` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean), and `~/.elan/bin/lake build QuasimodularSturm` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.

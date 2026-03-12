@@ -1,4 +1,4 @@
-import QuasimodularSturm.Basic
+import QuasimodularSturm.Sturm.Basic
 
 namespace QuasimodularSturm
 

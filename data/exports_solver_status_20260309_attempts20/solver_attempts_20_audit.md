@@ -9,11 +9,11 @@ Of the rest of the 20 attempts, there are 3 mathematically useful partial result
 The strongest clear results are:
 
 - The kernel quantile discrepancy rate conjecture is **likely a false conjecture**. The rank-1-kernel reduction to one-dimensional empirical `W_2` remains the cleanest disproof in the whole project.
-- The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution, and we now have a corresponding Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/SteinDisproofNotes.md](../../formalization/SteinDisproofNotes.md).
+- The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution, and we now have a corresponding Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/notes/SteinDisproofNotes.md](../../formalization/notes/SteinDisproofNotes.md).
 - The magnitude asymptotic for skew finite subsets of `\ell_1^N` is **likely a false conjecture**. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
 - The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
-- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set. We now also have a full Lean formalization recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/HilbertDepthNotes.md](../../formalization/HilbertDepthNotes.md).
-- The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong, and we now have a partial Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/XiZeroLimitNotes.md](../../formalization/XiZeroLimitNotes.md).
+- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set. We now also have a full Lean formalization recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/notes/HilbertDepthNotes.md](../../formalization/notes/HilbertDepthNotes.md).
+- The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong, and we now have a partial Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/notes/XiZeroLimitNotes.md](../../formalization/notes/XiZeroLimitNotes.md).
 
 Two more outputs are useful, but they should be read as statement failures rather than theorem disproofs:
 
@@ -28,7 +28,7 @@ A strong counterexample targets the stationary-law / uniform-moment conjecture d
 
 ### Stein equation: formalization attempt added
 
-For the other stochastic-approximation disconfirmation, we now also have a Lean formalization attempt of the literal printed conjecture. The note [../../formalization/SteinDisproofNotes.md](../../formalization/SteinDisproofNotes.md) links the proof file and records the main caveat: the formalization cleanly disconfirms the conjecture as printed, and also any minimal repair that still quantifies over all `1`-Lipschitz test functions and demands classical bounded derivatives through order `3`, but it does not by itself rule out a stronger repair that changes the test-function or derivative class.
+For the other stochastic-approximation disconfirmation, we now also have a Lean formalization attempt of the literal printed conjecture. The note [../../formalization/notes/SteinDisproofNotes.md](../../formalization/notes/SteinDisproofNotes.md) links the proof file and records the main caveat: the formalization cleanly disconfirms the conjecture as printed, and also any minimal repair that still quantifies over all `1`-Lipschitz test functions and demands classical bounded derivatives through order `3`, but it does not by itself rule out a stronger repair that changes the test-function or derivative class.
 
 ### The `\widetilde\Xi_n` zero-limit conjecture
 
@@ -36,7 +36,7 @@ This is the best new affirmative result. The solver notices two harmless stateme
 
 ### The `\widetilde\Xi_n` conjecture: partial formalization attempt added
 
-We now also have a Lean note for this proof route. The note [../../formalization/XiZeroLimitNotes.md](../../formalization/XiZeroLimitNotes.md) is deliberately narrow: it does not formalize the exact Xi-polynomial theorem end to end. What it does formalize is the corrected finite-root endgame, including the stronger averaged inequality needed to deduce `\beta_n \to 0` from reciprocal-root growth. It does not yet formalize the type-B Eulerian polynomial input, the exact Euler-number coefficient identity, or the Euler-number asymptotics, so this should be read as a partial structural check rather than a completed formal verification.
+We now also have a Lean note for this proof route. The note [../../formalization/notes/XiZeroLimitNotes.md](../../formalization/notes/XiZeroLimitNotes.md) is deliberately narrow: it does not formalize the exact Xi-polynomial theorem end to end. What it does formalize is the corrected finite-root endgame, including the stronger averaged inequality needed to deduce `\beta_n \to 0` from reciprocal-root growth. It does not yet formalize the type-B Eulerian polynomial input, the exact Euler-number coefficient identity, or the Euler-number asymptotics, so this should be read as a partial structural check rather than a completed formal verification.
 
 ### Hilbert depth of complete bipartite edge ideals
 
@@ -44,7 +44,7 @@ This remains the cleanest positive theorem closure in the full 20-attempt set. T
 
 ### The Hilbert-depth inequalities: full formalization added
 
-We now also have a Lean note for this proof route. The note [../../formalization/HilbertDepthNotes.md](../../formalization/HilbertDepthNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/HilbertDepth.lean](../../formalization/QuasimodularSturm/HilbertDepth.lean).
+We now also have a Lean note for this proof route. The note [../../formalization/notes/HilbertDepthNotes.md](../../formalization/notes/HilbertDepthNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/Attempts/HilbertDepth.lean](../../formalization/QuasimodularSturm/Attempts/HilbertDepth.lean).
 
 What is formalized is the full four-part inequality package from Conjecture 4.1 itself: monotonicity in `k`, reduction to the threshold cases, reflected pair-product identities, the elementary two-factor exponential bound, and the explicit endpoint algebra needed for the `P`, `Q`, and `R` product families.
 
@@ -56,7 +56,7 @@ These still look like the two clearest negative results in the full 20-attempt s
 
 ### The magnitude asymptotic conjecture: formalization attempt added
 
-We now also have a Lean note for the magnitude counterexample. The note [../../formalization/MagnitudeDisproofNotes.md](../../formalization/MagnitudeDisproofNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/MagnitudeDisproof.lean](../../formalization/QuasimodularSturm/MagnitudeDisproof.lean).
+We now also have a Lean note for the magnitude counterexample. The note [../../formalization/notes/MagnitudeDisproofNotes.md](../../formalization/notes/MagnitudeDisproofNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/Attempts/MagnitudeDisproof.lean](../../formalization/QuasimodularSturm/Attempts/MagnitudeDisproof.lean).
 
 What is formalized is the explicit `F={0,1}` disproof: the `4 × 4` similarity matrix for the vertices `{-r, r, 1-r, 1+r}`, the exact determinant formula
 
@@ -90,7 +90,7 @@ The solver did not prove the main leading-coefficient claim. What it did show is
 
 ### Optimal quasimodular Sturm bound: formalization attempt invalidated the proof sketch
 
-We now also have a Lean note for this attempt, but unlike the Stein and Xi notes, this one cuts against the original solver verdict. The note [../../formalization/QuasimodularSturmNotes.md](../../formalization/QuasimodularSturmNotes.md) records that the claimed complex-coefficient proof does not actually go through: the key elimination step uses only a counting statement about how many monomials have `q`-order at most `n`, and that is too weak to imply the existence of a diagonal basis. The formalization instead isolates the correct abstract diagonal criterion and checks low-weight evidence in the concrete `E_2,E_4,E_6` model. So this entry should no longer be scored as a partial confirmation; it moves back to the unresolved bucket.
+We now also have a Lean note for this attempt, but unlike the Stein and Xi notes, this one cuts against the original solver verdict. The note [../../formalization/notes/QuasimodularSturmNotes.md](../../formalization/notes/QuasimodularSturmNotes.md) records that the claimed complex-coefficient proof does not actually go through: the key elimination step uses only a counting statement about how many monomials have `q`-order at most `n`, and that is too weak to imply the existence of a diagonal basis. The formalization instead isolates the correct abstract diagonal criterion and checks low-weight evidence in the concrete `E_2,E_4,E_6` model. So this entry should no longer be scored as a partial confirmation; it moves back to the unresolved bucket.
 
 ## Still Unresolved
 

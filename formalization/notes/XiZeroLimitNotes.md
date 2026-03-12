@@ -4,7 +4,7 @@ This note documents the Lean formalization attempt for Attempt 22, the claimed c
 
 ## Scope
 
-The Lean proof attempt is in [QuasimodularSturm/XiZeroLimit.lean](QuasimodularSturm/XiZeroLimit.lean).
+The Lean proof attempt is in [../QuasimodularSturm/Attempts/XiZeroLimit.lean](../QuasimodularSturm/Attempts/XiZeroLimit.lean).
 
 The main theorems are:
 
@@ -51,6 +51,8 @@ Those missing ingredients are the substantive Xi-specific part of the proof. Mat
 
 ## Verification
 
-`lake build QuasimodularSturm.XiZeroLimit` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean).
 
-I did not verify the note via `lake build QuasimodularSturm`, because that full target is currently blocked by pre-existing unrelated errors in [QuasimodularSturm/Concrete.lean](QuasimodularSturm/Concrete.lean).
+`lake build QuasimodularSturm.Attempts.XiZeroLimit` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+
+`lake build QuasimodularSturm` also succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
