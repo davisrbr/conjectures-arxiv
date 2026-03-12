@@ -13,7 +13,7 @@ The strongest clear results are:
 - The magnitude asymptotic for skew finite subsets of `\ell_1^N` is **likely a false conjecture**. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
 - The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
 - The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set.
-- The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong.
+- The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong, and we now have a partial Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/XiZeroLimitNotes.md](../../formalization/XiZeroLimitNotes.md).
 
 Two more outputs are useful, but they should be read as statement failures rather than theorem disproofs:
 
@@ -33,6 +33,10 @@ For the other stochastic-approximation disconfirmation, we now also have a Lean 
 ### The `\widetilde\Xi_n` zero-limit conjecture
 
 This is the best new affirmative result. The solver notices two harmless statement defects, corrects them, and then gives an exact coefficient-ratio identity involving Euler numbers. Once that identity is written down, the conclusion `\beta_n \to 0` follows cleanly. There is apparently already a very close same-month follow-up paper on the exact `\widetilde\Xi_n` zero distribution, so this should be scored as a strong confirmation but not as a brand-new literature-free breakthrough.
+
+### The `\widetilde\Xi_n` conjecture: partial formalization attempt added
+
+We now also have a Lean note for this proof route. The note [../../formalization/XiZeroLimitNotes.md](../../formalization/XiZeroLimitNotes.md) is deliberately narrow: it does not formalize the exact Xi-polynomial theorem end to end. What it does formalize is the corrected finite-root endgame, including the stronger averaged inequality needed to deduce `\beta_n \to 0` from reciprocal-root growth. It does not yet formalize the type-B Eulerian polynomial input, the exact Euler-number coefficient identity, or the Euler-number asymptotics, so this should be read as a partial structural check rather than a completed formal verification.
 
 ### Hilbert depth of complete bipartite edge ideals
 
