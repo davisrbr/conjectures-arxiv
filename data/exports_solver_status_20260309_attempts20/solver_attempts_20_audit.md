@@ -12,7 +12,7 @@ The strongest clear results are:
 - The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution, and we now have a corresponding Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/SteinDisproofNotes.md](../../formalization/SteinDisproofNotes.md).
 - The magnitude asymptotic for skew finite subsets of `\ell_1^N` is **likely a false conjecture**. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
 - The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
-- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set.
+- The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set. We now also have a full Lean formalization recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/HilbertDepthNotes.md](../../formalization/HilbertDepthNotes.md).
 - The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong, and we now have a partial Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/XiZeroLimitNotes.md](../../formalization/XiZeroLimitNotes.md).
 
 Two more outputs are useful, but they should be read as statement failures rather than theorem disproofs:
@@ -40,7 +40,15 @@ We now also have a Lean note for this proof route. The note [../../formalization
 
 ### Hilbert depth of complete bipartite edge ideals
 
-This remains the cleanest positive theorem closure in the full 20-attempt set. The inequalities were conjectural in the source paper, the solver supplied a coherent proof path, and spot checks behaved correctly. I would still human-proofread the factor pairing argument before citing it as done, but this is exactly the sort of output the pipeline was supposed to find.
+This remains the cleanest positive theorem closure in the full 20-attempt set. The inequalities were conjectural in the source paper, the solver supplied a coherent proof path, and that proof path is now backed by a full Lean formalization of the four inequality statements themselves. This is exactly the sort of output the pipeline was supposed to find.
+
+### The Hilbert-depth inequalities: full formalization added
+
+We now also have a Lean note for this proof route. The note [../../formalization/HilbertDepthNotes.md](../../formalization/HilbertDepthNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/HilbertDepth.lean](../../formalization/QuasimodularSturm/HilbertDepth.lean).
+
+What is formalized is the full four-part inequality package from Conjecture 4.1 itself: monotonicity in `k`, reduction to the threshold cases, reflected pair-product identities, the elementary two-factor exponential bound, and the explicit endpoint algebra needed for the `P`, `Q`, and `R` product families.
+
+The note is explicit about one strengthening and one boundary. The strengthening is that the final Lean theorems are proved for real `k` above the thresholds, not just integer `k`. The boundary is that the current file does not formalize the downstream commutative-algebra consequences such as Proposition 4.2 or the broader Hilbert-depth machinery. So this should be read as a completed formal verification of the conjectured inequalities themselves.
 
 ### Kernel quantile discrepancy and magnitude asymptotics
 
