@@ -58,6 +58,8 @@ and the limiting coefficient `16(1-e^{-2})` rather than the conjectured `16`.
 
 The note is explicit that this does not yet formalize the broader one-dimensional product formula for arbitrary finite `F ⊂ \ell_1^1`. So it should be read as a completed formal verification of the concrete counterexample, not yet of the full general `N=1` strengthening discussed in the natural-language attempt.
 
+From an audit perspective, that still materially strengthens the status of Attempt 9. The main computational risk in the original writeup was an explicit determinant/asymptotic calculation on a `4 × 4` exponential-kernel matrix, and that part is now mechanically checked. So the remaining uncertainty is no longer algebraic correctness of the counterexample itself, but only the higher-level scope question of how far one wants to generalize beyond the concrete `F={0,1}` instance.
+
 ## Strong Partial Results
 
 ### Arrow-pattern avoidance
