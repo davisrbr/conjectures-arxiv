@@ -1,5 +1,6 @@
 import QuasimodularSturm.Basic
 import QuasimodularSturm.DiagonalCriterion
 import QuasimodularSturm.Concrete
+import QuasimodularSturm.MagnitudeDisproof
 import QuasimodularSturm.SteinDisproof
 import QuasimodularSturm.XiZeroLimit

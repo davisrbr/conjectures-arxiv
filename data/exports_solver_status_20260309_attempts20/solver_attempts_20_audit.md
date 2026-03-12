@@ -46,6 +46,18 @@ This remains the cleanest positive theorem closure in the full 20-attempt set. T
 
 These still look like the two clearest negative results in the full 20-attempt set. Both rest on explicit reductions to simpler objects rather than vague plausibility arguments.
 
+### The magnitude asymptotic conjecture: formalization attempt added
+
+We now also have a Lean note for the magnitude counterexample. The note [../../formalization/MagnitudeDisproofNotes.md](../../formalization/MagnitudeDisproofNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/MagnitudeDisproof.lean](../../formalization/QuasimodularSturm/MagnitudeDisproof.lean).
+
+What is formalized is the explicit `F={0,1}` disproof: the `4 × 4` similarity matrix for the vertices `{-r, r, 1-r, 1+r}`, the exact determinant formula
+
+`(1-e^{-4r})^2 (1-e^{-2(1-2r)})`,
+
+and the limiting coefficient `16(1-e^{-2})` rather than the conjectured `16`.
+
+The note is explicit that this does not yet formalize the broader one-dimensional product formula for arbitrary finite `F ⊂ \ell_1^1`. So it should be read as a completed formal verification of the concrete counterexample, not yet of the full general `N=1` strengthening discussed in the natural-language attempt.
+
 ## Strong Partial Results
 
 ### Arrow-pattern avoidance
