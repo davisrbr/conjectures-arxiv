@@ -9,7 +9,7 @@ Of the rest of the 20 attempts, there are 4 mathematically useful partial result
 The strongest clear results are:
 
 - The kernel quantile discrepancy rate conjecture is **likely a false conjecture**. The rank-1-kernel reduction to one-dimensional empirical `W_2` remains the cleanest disproof in the whole project.
-- The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution.
+- The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution, and we now have a corresponding Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/SteinDisproofNotes.md](../../formalization/SteinDisproofNotes.md).
 - The magnitude asymptotic for skew finite subsets of `\ell_1^N` is **likely a false conjecture**. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
 - The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
 - The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set.
@@ -25,6 +25,10 @@ Two more outputs are useful, but they should be read as statement failures rathe
 ### Constant-stepsize SGD: stationary moment conjecture likely false
 
 A strong counterexample targets the stationary-law / uniform-moment conjecture directly. It uses the simplest admissible case, `h=2`, where the recursion reduces to a linear AR(1) model. With centered heavy-tailed noise whose third moment is finite but sixth moment is infinite, the stationary law still exists, but it cannot satisfy the conjectured sixth-moment bound. That is a compelling obstruction on its own merits: it appears in a basic allowed regime, it is easy to state, and it is not the kind of failure that can be repaired without strengthening the assumptions.
+
+### Stein equation: formalization attempt added
+
+For the other stochastic-approximation disconfirmation, we now also have a Lean formalization attempt of the literal printed conjecture. The note [../../formalization/SteinDisproofNotes.md](../../formalization/SteinDisproofNotes.md) links the proof file and records the main caveat: the formalization cleanly disconfirms the conjecture as printed, and also any minimal repair that still quantifies over all `1`-Lipschitz test functions and demands classical bounded derivatives through order `3`, but it does not by itself rule out a stronger repair that changes the test-function or derivative class.
 
 ### The `\widetilde\Xi_n` zero-limit conjecture
 
