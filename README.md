@@ -4,7 +4,7 @@ This project scrapes recent `math*` arXiv papers, pulls out open conjectures, an
 
 The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 676 (likely open) conjectures, from papers published between February 2, 2026 and March 4, 2026.
 
-For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 proofs that might hold up: 2 confirmations of open conjectures, and 4 apparent disconfirmations**. There are also several potentially useful partial results. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated, and the proofs have not been independently verified.
+For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlement-quality outcomes that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated and model-reported, and they have not been independently verified.
 
 ## Pipeline
 
@@ -124,11 +124,11 @@ Current totals:
 The current GPT-5.4 solver pilot covers 20 attempts on the highest-priority viable conjectures.
 
 - 6 strong settlement-quality outcomes: 2 confirmations and 4 disconfirmations
-- 2 formalization failures
-- 4 partial-progress outcomes
+- 2 specification/formalization issues
+- 3 partial-progress outcomes
 - 1 qualified confirmation
 - 1 draft question that looks resolved in substance
-- 6 unresolved outcomes
+- 7 unresolved outcomes
 
 These are model-reported results, not independently verified mathematical proofs or counterexamples.
 
