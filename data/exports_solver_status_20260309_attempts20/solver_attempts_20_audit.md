@@ -11,7 +11,7 @@ The strongest clear results are:
 - The kernel quantile discrepancy rate conjecture is **likely a false conjecture**. The rank-1-kernel reduction to one-dimensional empirical `W_2` remains the cleanest disproof in the whole project.
 - The Stein-equation conjecture in the stochastic-approximation paper is **likely a false conjecture**. The `|y|` test function blocks the claimed `C^3` bounded-derivative solution, and we now have a corresponding Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/notes/SteinDisproofNotes.md](../../formalization/notes/SteinDisproofNotes.md).
 - The magnitude asymptotic for skew finite subsets of `\ell_1^N` is **likely a false conjecture**. The one-dimensional `F={0,1}` counterexample directly contradicts the claimed leading term.
-- The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive.
+- The second conjecture from the same stochastic-approximation paper, asserting a uniform `3h` stationary moment bound under only a third moment assumption on the noise, is **also likely false**. The quadratic `h=2` AR(1) example with finite third but infinite sixth innovation moment is decisive, and we now have a full Lean formalization of that route after first restoring the mean-zero noise assumption omitted from the printed statement. In that shored-up version, the SGD update becomes a linear AR(1) recursion driven by explicit centered heavy-tail noise. The same Lean file also records a separate deterministic disproof of the literal printed statement, exposing the omitted centering assumption as a technical defect in the published wording.
 - The Hilbert-depth product inequalities look genuinely proved and remain the strongest clean **affirmative result** in the current 20-attempt set. We now also have a full Lean formalization recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/notes/HilbertDepthNotes.md](../../formalization/notes/HilbertDepthNotes.md).
 - The `\widetilde\Xi_n` zero-limit conjecture looks like genuinely proved **affirmative result**. The coefficient-ratio argument forcing `\beta_n \to 0` is strong, and we now have a partial Lean formalization attempt recorded in [solver_attempts_20_summary.md](solver_attempts_20_summary.md) and [../../formalization/notes/XiZeroLimitNotes.md](../../formalization/notes/XiZeroLimitNotes.md).
 
@@ -25,6 +25,38 @@ Two more outputs are useful, but they should be read as statement failures rathe
 ### Constant-stepsize SGD: stationary moment conjecture likely false
 
 A strong counterexample targets the stationary-law / uniform-moment conjecture directly. It uses the simplest admissible case, `h=2`, where the recursion reduces to a linear AR(1) model. With centered heavy-tailed noise whose third moment is finite but sixth moment is infinite, the stationary law still exists, but it cannot satisfy the conjectured sixth-moment bound. That is a compelling obstruction on its own merits: it appears in a basic allowed regime, it is easy to state, and it is not the kind of failure that can be repaired without strengthening the assumptions.
+
+### Constant-stepsize SGD stationary-moment conjecture: full formalization added
+
+We now have a Lean formalization for two different versions of Attempt 16. One formalizes the
+natural repaired version of the conjecture, where the missing mean-zero noise assumption is put
+back and the argument is carried out in the quadratic `h = 2` case so that the SGD recursion is a
+linear AR(1) process. The other formalizes the literal printed statement as written. The note [../../formalization/notes/GeneralSGDMomentDisproofNotes.md](../../formalization/notes/GeneralSGDMomentDisproofNotes.md)
+links the proof file [../../formalization/QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean](../../formalization/QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean).
+
+The substantive route matches the solver's natural-language argument. It proceeds in two stages.
+First we shore up the conjecture by putting back the mean-zero noise assumption omitted from the
+printed A6. Then we formalize the counterexample in the clean quadratic `h = 2` case, where the
+SGD recursion becomes the linear AR(1) update `X_(k+1) = (1 - α) X_k + α ξ_(k+1)`. Lean constructs
+an explicit centered heavy-tailed noise with finite third moment but infinite sixth moment, proves
+that the iterate laws converge in distribution to the stationary series `∑ n, α (1 - α)^n ξ_n`,
+and then shows that this limit law still has infinite sixth moment. So the repaired conjecture
+fails for the same basic reason identified in the original write-up.
+
+The same file also contains a separate disproof of the literal printed statement. That construction
+works on a one-point probability space with deterministic noise `ξ_k ≡ 2` and the explicit convex
+objective
+
+`f(x) = x arctan x - (1/2) log(1+x^2)`.
+
+Its derivative is `arctan x`, so the SGD increment is always at least `α (2 - π/2) > 0`. Therefore
+the iterates diverge to `+∞`, and the associated Dirac laws cannot converge to any finite limit
+law. This exposes the omitted centering assumption as a genuine technical defect in the published
+wording.
+
+So the Lean file now contains two complementary disproofs: a substantive heavy-tail AR(1)
+counterexample for the shored-up version where mean-zero noise is restored, and a narrower
+statement-level objection to the exact printed text.
 
 ### Stein equation: formalization attempt added
 

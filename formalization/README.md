@@ -17,6 +17,7 @@ To build a single module:
 ```sh
 lake build QuasimodularSturm.Attempts.HilbertDepth
 lake build QuasimodularSturm.Attempts.MagnitudeDisproof
+lake build QuasimodularSturm.Attempts.GeneralSGDMomentDisproof
 lake build QuasimodularSturm.Attempts.SteinDisproof
 lake build QuasimodularSturm.Attempts.XiZeroLimit
 ```
@@ -30,6 +31,7 @@ lake build QuasimodularSturm.Attempts.XiZeroLimit
 - `QuasimodularSturm.Sturm.Concrete`
 - `QuasimodularSturm.Attempts.HilbertDepth`
 - `QuasimodularSturm.Attempts.MagnitudeDisproof`
+- `QuasimodularSturm.Attempts.GeneralSGDMomentDisproof`
 - `QuasimodularSturm.Attempts.SteinDisproof`
 - `QuasimodularSturm.Attempts.XiZeroLimit`
 
@@ -45,6 +47,7 @@ The workspace is organized as follows:
 
 - [QuasimodularSturm/Attempts/HilbertDepth.lean](QuasimodularSturm/Attempts/HilbertDepth.lean): full formalization of Attempt 10, proving all four product inequalities from Conjecture 4.1 in the Hilbert-depth paper.
 - [QuasimodularSturm/Attempts/MagnitudeDisproof.lean](QuasimodularSturm/Attempts/MagnitudeDisproof.lean): full formalization of the explicit `F = {0,1}` counterexample for Attempt 9.
+- [QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean](QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean): full formalization of two Attempt 16 disproof routes. For the substantive route, we first shore up the conjecture by restoring the mean-zero noise assumption omitted from the printed A6 and then move to the simplest repaired case: `h = 2` and `f(x) = x^2 / 2`. In that setting the SGD recursion becomes the linear update `X_(k+1) = (1 - α) X_k + α ξ_(k+1)`. Lean then formalizes the counterexample itself by constructing explicit centered dyadic heavy-tail noise with finite third moment but infinite sixth moment, proving that the iterate laws converge to the stationary series `∑ n, α (1 - α)^n ξ_n`, and showing that this limit law still has infinite sixth moment. The same file also formalizes a separate disproof of the literal printed statement via deterministic noise on a one-point probability space, exposing the missing centering assumption that lets the iterates drift to infinity.
 - [QuasimodularSturm/Attempts/SteinDisproof.lean](QuasimodularSturm/Attempts/SteinDisproof.lean): full formal disproof of the literal printed Stein-equation conjecture for Attempt 3.
 - [QuasimodularSturm/Attempts/XiZeroLimit.lean](QuasimodularSturm/Attempts/XiZeroLimit.lean): partial formalization of the corrected finite-root endgame for Attempt 22.
 - [QuasimodularSturm/Sturm/DiagonalCriterion.lean](QuasimodularSturm/Sturm/DiagonalCriterion.lean): abstract diagonal criterion used in the quasimodular Sturm-bound investigation.
@@ -57,6 +60,7 @@ These notes explain scope, caveats, and verification status for the formalizatio
 
 - [notes/HilbertDepthNotes.md](notes/HilbertDepthNotes.md)
 - [notes/MagnitudeDisproofNotes.md](notes/MagnitudeDisproofNotes.md)
+- [notes/GeneralSGDMomentDisproofNotes.md](notes/GeneralSGDMomentDisproofNotes.md)
 - [notes/SteinDisproofNotes.md](notes/SteinDisproofNotes.md)
 - [notes/XiZeroLimitNotes.md](notes/XiZeroLimitNotes.md)
 - [notes/QuasimodularSturmNotes.md](notes/QuasimodularSturmNotes.md)
