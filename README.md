@@ -4,14 +4,17 @@ This project scrapes recent `math*` arXiv papers, pulls out open conjectures, an
 
 The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 676 (likely open) conjectures, from papers published between February 2, 2026 and March 4, 2026.
 
-For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlement-quality outcomes that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated and model-reported, and they have not been independently verified.
+For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlements of the conjecture that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated and model-reported, and they have not been independently verified. 
+
+Finally, we used Codex (again, with GPT-5.4) to attempt to formalize 6 of the 20 proof attempts in Lean, [linked here](formalization/notes). In 4 of 6 cases, the system claims that the formalization is successful, though as non-experts we are of course hesitant to draw strong conclusions.
 
 ## Pipeline
 
 1. Ingest recent arXiv math papers over a date range (we choose the ~past month).
 2. Extract conjecture blocks and store them with paper metadata, including arXiv category, DOI, journal reference, comments, and license.
 3. Label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for `interestingness` and near-term solution `viability`, i.e. the tractability.
-4. Run GPT-5.4 Thinking (xhigh) to attempt solutions on a subset of the most tractable conjectures.
+4. (Optional) Run GPT-5.4 Thinking (xhigh) to attempt solutions on a subset of the most tractable conjectures.
+5. (Optional) Formalize the attempted solutions from (4) in Lean.
 
 ## Install
 
