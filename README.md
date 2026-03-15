@@ -1,4 +1,4 @@
-# Conjectures from Recent arXiv Math Papers
+# OpenConjecture, a living dataset of mathematics conjectures from the ArXiv
 
 This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
