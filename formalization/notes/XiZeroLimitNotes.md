@@ -1,58 +1,80 @@
 # Attempt 22 Lean Formalization Notes
 
-This note documents the Lean formalization attempt for Attempt 22, the claimed confirmation of the `\widetilde\Xi_n` smallest-zero conjecture from "Algebraic representatives of the ratios `ζ(2n+1)/π^{2n}` and `β(2n)/π^{2n-1}`."
+This note documents the Lean formalization for Attempt 22, the confirmation of the `\widetilde\Xi_n` smallest-zero conjecture from "Algebraic representatives of the ratios `ζ(2n+1)/π^{2n}` and `β(2n)/π^{2n-1}`."
 
 ## Scope
 
-The Lean proof attempt is in [../QuasimodularSturm/Attempts/XiZeroLimit.lean](../QuasimodularSturm/Attempts/XiZeroLimit.lean).
+The Lean development is in:
 
-The main theorems are:
+- [../QuasimodularSturm/Attempts/XiZeroLimit.lean](../QuasimodularSturm/Attempts/XiZeroLimit.lean)
+- [../QuasimodularSturm/Attempts/XiZeroLimitAnalytic.lean](../QuasimodularSturm/Attempts/XiZeroLimitAnalytic.lean)
 
-- `smallestValue_le_card_div_sumInv`
-- `xi_smallestRoot_tendsto_zero`
-- `xi_smallestRoot_tendsto_zero_of_sumInv`
+The main theorem is:
 
-What these theorems formalize is the finite-root endgame:
+- `xi_smallestRoot_tendsto_zero_of_solverRawAdaptedXi`
 
-- for a nonempty finite family of positive real roots, the smallest root is at most
-  `(# roots) / (sum of reciprocal roots)`,
-- therefore, if for `\widetilde\Xi_n` one can prove that
-  `(# positive roots of \widetilde\Xi_n) / (sum of reciprocal roots)` tends to `0`,
-  then the smallest positive root tends to `0`.
+The main Xi-specific bridge theorems are:
+
+- `solverRawAdaptedXi_eq_solverSechXiExact`
+- `solverRawAdaptedXi_coeff_ratio_eq_secantEulerRatioShift`
+- `solverRawAdaptedXi_roots_nonempty`
+- `solverRawAdaptedXi_roots_pos`
+- `solverRawAdaptedXi_roots_card`
+
+The Lean object `solverRawAdaptedXi n = rawAdaptedXi (n + 2)` is the paper's adapted Xi family
+`\widetilde\Xi_n`, presented in the solver indexing and up to the explicit nonzero scalar
+normalization recorded in the file. That normalization preserves the positive zeros and the
+coefficient ratio `-coeff 1 / coeff 0`, so it does not change the conjecture being proved.
+
+What is now formalized end to end is the full proof of the adapted-Xi smallest-zero statement:
+
+- the explicit coefficient formula for the adapted Xi polynomial in terms of type-B Eulerian data,
+- the identification of that coefficient-defined family with the odd `sech` derivative model,
+- the positive-root and root-count statements needed for the smallest-root argument,
+- the exact coefficient-ratio identity in terms of secant-Euler data, via the Bernoulli /
+  Dirichlet-beta bridge,
+- the corrected finite-root endgame turning reciprocal-root growth into `\beta_n \to 0`.
 
 ## Match To The Solver Attempt
 
-This is not a line-by-line formalization of the solver writeup.
+This is not a literal line-by-line transcription of the solver writeup, because the solver's step
 
-The solver sketch used the true inequality
+`sum_j 1 / y_{n,j} >= 1 / beta_n`
 
-`sum_j 1 / y_{n,j} >= 1 / beta_n`,
+is true but too weak on its own to force `beta_n -> 0` by itself.
 
-but that inequality alone is too weak to conclude `beta_n -> 0` from growth of the reciprocal-root sum. In Lean I instead formalized the corrected averaged bound
+The Lean development makes that issue explicit and replaces it with the stronger averaged inequality
+that is actually needed:
 
-`beta_n <= (# roots) / (sum_j 1 / y_{n,j})`.
+- `inv_smallestValue_le_sumInv` formalizes the weak inequality itself,
+- `smallestValue_le_card_div_sumInv` formalizes the stronger averaged inequality that is actually
+  needed,
+- `neg_deriv_scaledRootProduct_div_eq_sumInv` formalizes the exact log-derivative identity from the
+  factorized polynomial,
+- `xi_logDerivRatio_from_auxiliary_data` formalizes the exact algebra needed to reach the Euler-ratio
+  formula once the Taylor and auxiliary-function identities are available.
 
-So the current Lean file should be read as a formalization of the corrected endgame of the argument, not of every sentence in the original natural-language proof sketch.
+So the right reading is: this is a full formalization of the corrected proof of the paper's
+adapted-Xi conjecture, not of the solver's one-line too-weak implication taken in isolation.
 
 ## What Is Not Yet Formalized
 
-This is not an exact formal proof of the conjecture as stated in the paper.
+What is not formalized is the rest of the surrounding paper beyond this conjecture.
 
-In particular, the current Lean development does not yet formalize:
+In particular, this note should not be read as claiming a formalization of:
 
-- the exact definitions of `\Xi_n` and `\widetilde\Xi_n` from theorem 3.1,
-- the typo repair in the printed conjecture (`\Lambda_n` versus `\Xi_n`) and the `n >= 2` restriction needed because `\widetilde\Xi_1` has no positive zero,
-- the paper's real-rootedness and root-location input for `\widetilde\Xi_n`,
-- the representation of `\Xi_n` via the type-B Eulerian polynomial `B_{2n-1}`,
-- the exact coefficient-ratio identity involving the Euler numbers,
-- the asymptotic growth needed to show that the reciprocal-root sum dominates the number of roots.
+- the entire paper's notation layer for both `\Xi_n` and `\widetilde\Xi_n` beyond the adapted-Xi
+  family needed here,
+- the paper's broader zero-distribution results beyond the smallest-positive-zero limit,
+- the follow-up literature on the full `\widetilde\Xi_n` zero distribution.
 
-Those missing ingredients are the substantive Xi-specific part of the proof. Mathlib in this repository does not currently provide the needed type-B Eulerian polynomial and secant-Euler-number infrastructure, so an exact end-to-end formalization would require building that theory first.
+The conjecture itself is formalized, but the whole paper is not.
 
 ## Verification
 
 The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean).
 
-`lake build QuasimodularSturm.Attempts.XiZeroLimit` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake build QuasimodularSturm.Attempts.XiZeroLimit` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
 
-`lake build QuasimodularSturm` also succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake env lean /Users/davisbrown/conjectures-arxiv/formalization/QuasimodularSturm/Attempts/XiZeroLimit.lean`
+succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
