@@ -332,8 +332,8 @@ def test_export_huggingface_dataset_redacts_restricted_text(tmp_path) -> None:
     readme_text = exported["hf_readme"].read_text(encoding="utf-8")
     assert "alice/conjectures-arxiv" in readme_text
     assert "nonexclusive-distrib" in readme_text
-    assert "newest available LLM label metadata" in readme_text
     assert "OpenConjecture, a living dataset of mathematics conjectures from the ArXiv" in readme_text
+    assert "OpenConjecture is currently composed of **1** open conjectures." in readme_text
 
 
 def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) -> None:
@@ -379,9 +379,10 @@ def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) 
     readme_text = exported["hf_readme"].read_text(encoding="utf-8")
     assert "github.com/davisrbr/conjectures-arxiv" in readme_text
     assert "./assets/real_conjectures_category_kde_scores.png" in readme_text
-    assert "KDE Preview" in readme_text
-    assert "**1** real and open conjectures." in readme_text
-    assert "This snapshot currently contains 1 extracted conjecture records from 1 recent `math*` arXiv papers" in readme_text
+    assert "LLM-labeled conjectures, per field" in readme_text
+    assert "OpenConjecture is currently composed of **1** open conjectures." in readme_text
+    assert "This snapshot currently contains 1 extracted candidate conjecture records from 1 recent `math*` arXiv papers" in readme_text
+    assert "## This release includes" in readme_text
 
 
 def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:

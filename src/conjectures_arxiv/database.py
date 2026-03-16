@@ -1129,10 +1129,13 @@ class Database:
                 f"and {manifest['published_at_range_end']}"
             )
         label_counts = manifest.get("latest_labels_by_class", {})
+        open_conjecture_line = (
+            "OpenConjecture is currently composed of "
+            f"**{label_counts.get('real_open_conjecture', 0)}** open conjectures."
+        )
         snapshot_counts = (
-            f"**{label_counts.get('real_open_conjecture', 0)}** real and open conjectures.\n\n"
             "This snapshot currently contains "
-            f"{manifest['conjectures_total']} extracted conjecture records from "
+            f"{manifest['conjectures_total']} extracted candidate conjecture records from "
             f"{manifest['papers_total']} recent `math*` arXiv papers"
         )
         if published_range:
@@ -1150,7 +1153,7 @@ class Database:
         card_image_section = ""
         if card_image_path is not None:
             card_image_section = (
-                "## KDE Preview\n\n"
+                "## LLM-labeled conjectures, per field\n\n"
                 "The plot below shows the category-level score density for the currently published "
                 "`real_open_conjecture` subset, using the interestingness and near-term viability "
                 "scores from the pipeline.\n\n"
@@ -1171,7 +1174,7 @@ class Database:
             f"[`conjectures-arxiv`]({SOURCE_REPO_URL}) ingests recent `math*` papers, extracts "
             "conjecture-like blocks from source LaTeX, labels each candidate with GPT-5 Mini, and "
             "scores real/open conjectures for interestingness and near-term viability.\n\n"
-            "## Current Snapshot\n\n"
+            f"{open_conjecture_line}\n\n"
             f"{snapshot_counts}\n\n"
             "The GitHub repository includes the full pipeline, scripts, plots, and solver artifacts for "
             "this release.\n\n"
@@ -1179,16 +1182,12 @@ class Database:
             "- Source code and pipeline: "
             f"[`github.com/davisrbr/conjectures-arxiv`]({SOURCE_REPO_URL})\n"
             f"{repo_line}\n"
-            "## What This Release Includes\n\n"
-            "- A license-filtered public export of paper metadata and conjecture records.\n"
-            "- The latest available LLM label metadata for every conjecture in the snapshot.\n"
-            "- Redaction metadata explaining when text was withheld.\n"
+            "## This release includes\n\n"
+            "- Paper metadata and the conjecture text.\n"
+            "- LLM labels for every conjecture in the snapshot.\n"
             "- The full pipeline, scripts, plots, and solver artifacts in the source repo.\n\n"
             f"{card_image_section}"
             "## Publication Policy\n\n"
-            "This publication pipeline is intentionally aggressive by default:\n"
-            "if a paper license is missing or unfamiliar, the conjecture text is still published.\n"
-            "Text is withheld only when the license is clearly restrictive for broad republication.\n\n"
             "This Hugging Face release is prepared as a noncommercial dataset release, so "
             "`CC BY-NC*` material is included.\n\n"
             "Current withhold rules:\n\n"
@@ -1196,19 +1195,12 @@ class Database:
             "When text is withheld, the record still includes the paper identifier, URLs, and source location.\n"
             "This policy metadata is exposed per record in `publication_decision`, `publication_text_reason`, "
             "and `publication_policy_version`.\n\n"
-            "## Labels and Scores\n\n"
-            "The public conjecture rows also include the newest available LLM label metadata for each conjecture.\n"
-            "If multiple label runs exist, the latest one wins.\n"
-            "These fields are preserved even when the conjecture text itself is withheld.\n\n"
             "## Files\n\n"
             "- `data/conjectures.jsonl`: public conjecture records with text redacted only when policy requires it\n"
             "- `data/conjectures.csv`: CSV version of the public conjecture table\n"
             "- `data/papers.jsonl`: paper metadata plus counts of redacted versus published conjectures per paper\n"
             "- `data/papers.csv`: CSV version of the paper table\n"
-            "- `data/publication_manifest.json`: aggregate counts for the publication decision pipeline\n\n"
-            "## Notes\n\n"
-            "- `license: other` is used because the dataset mixes paper-level licenses and publication decisions.\n"
-            "- This is operational guidance for dataset publication, not legal advice.\n"
+            "- `data/publication_manifest.json`: aggregate counts for the publication decision pipeline\n"
         )
 
     def _maybe_copy_hf_card_image(self, *, out_dir: Path) -> Path | None:
