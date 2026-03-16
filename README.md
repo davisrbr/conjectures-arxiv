@@ -4,7 +4,7 @@ This project scrapes recent `math*` arXiv papers, pulls out open conjectures, an
 
 The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 676 (likely open) conjectures, from papers published between February 2, 2026 and March 4, 2026.
 
-For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlement-quality outcomes that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated and model-reported, and they have not been independently verified.
+For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlement-quality outcomes that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). Several of the strongest outcomes now also have Lean artifacts in [formalization/](formalization/), including full formalizations of Attempts 3, 9, 10, and 22. These are LLM generated and model-reported, and they have not been independently verified.
 
 ## Pipeline
 
@@ -131,6 +131,8 @@ The current GPT-5.4 solver pilot covers 20 attempts on the highest-priority viab
 - 7 unresolved outcomes
 
 These are model-reported results, not independently verified mathematical proofs or counterexamples.
+
+Some of the strongest entries now also have dedicated Lean formalizations in [formalization/](formalization/). In particular, the Hilbert-depth confirmation and the adapted-`\widetilde\Xi_n` zero-limit confirmation now each have end-to-end Lean proofs of the theorem stated by the solver writeup, while the Stein and magnitude counterexamples have Lean formalizations of the concrete disproofs.
 
 Artifacts:
 

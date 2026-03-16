@@ -46,7 +46,7 @@ The workspace is organized as follows:
 - [QuasimodularSturm/Attempts/HilbertDepth.lean](QuasimodularSturm/Attempts/HilbertDepth.lean): full formalization of Attempt 10, proving all four product inequalities from Conjecture 4.1 in the Hilbert-depth paper.
 - [QuasimodularSturm/Attempts/MagnitudeDisproof.lean](QuasimodularSturm/Attempts/MagnitudeDisproof.lean): full formalization of the explicit `F = {0,1}` counterexample for Attempt 9.
 - [QuasimodularSturm/Attempts/SteinDisproof.lean](QuasimodularSturm/Attempts/SteinDisproof.lean): full formal disproof of the literal printed Stein-equation conjecture for Attempt 3.
-- [QuasimodularSturm/Attempts/XiZeroLimit.lean](QuasimodularSturm/Attempts/XiZeroLimit.lean): partial formalization of the corrected finite-root endgame for Attempt 22.
+- [QuasimodularSturm/Attempts/XiZeroLimit.lean](QuasimodularSturm/Attempts/XiZeroLimit.lean): full formalization of the adapted-`\widetilde\Xi_n` zero-limit theorem for Attempt 22, up to the file's explicit nonzero scalar normalization and solver indexing.
 - [QuasimodularSturm/Sturm/DiagonalCriterion.lean](QuasimodularSturm/Sturm/DiagonalCriterion.lean): abstract diagonal criterion used in the quasimodular Sturm-bound investigation.
 - [QuasimodularSturm/Sturm/Concrete.lean](QuasimodularSturm/Sturm/Concrete.lean): concrete low-weight `E_2, E_4, E_6` model for the quasimodular Sturm-bound attempt.
 - [QuasimodularSturm/Sturm/Basic.lean](QuasimodularSturm/Sturm/Basic.lean): small shared lemmas used by the quasimodular-Sturm files.
