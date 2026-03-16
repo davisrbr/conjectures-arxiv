@@ -5,6 +5,7 @@ import csv
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 from typing import Any
@@ -15,6 +16,8 @@ from .models import Paper
 
 
 TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
+SOURCE_REPO_URL = "https://github.com/davisrbr/conjectures-arxiv"
+HF_CARD_IMAGE_NAME = "real_conjectures_category_kde_scores.png"
 
 
 def utc_now_str() -> str:
@@ -395,6 +398,7 @@ class Database:
         papers_csv = data_dir / "papers.csv"
         manifest_json = data_dir / "publication_manifest.json"
         readme_path = out_dir / "README.md"
+        card_image_path = self._maybe_copy_hf_card_image(out_dir=out_dir)
 
         self._write_jsonl(conjectures_jsonl, public_conjectures)
         self._write_csv(conjectures_csv, public_conjectures)
@@ -402,11 +406,15 @@ class Database:
         self._write_csv(papers_csv, public_papers)
         self._write_json(manifest_json, manifest)
         readme_path.write_text(
-            self._build_huggingface_readme(manifest, repo_id=repo_id),
+            self._build_huggingface_readme(
+                manifest,
+                repo_id=repo_id,
+                card_image_path=card_image_path,
+            ),
             encoding="utf-8",
         )
 
-        return {
+        artifacts = {
             "hf_readme": readme_path,
             "hf_conjectures_jsonl": conjectures_jsonl,
             "hf_conjectures_csv": conjectures_csv,
@@ -414,6 +422,9 @@ class Database:
             "hf_papers_csv": papers_csv,
             "hf_manifest_json": manifest_json,
         }
+        if card_image_path is not None:
+            artifacts["hf_card_image"] = out_dir / card_image_path
+        return artifacts
 
     def list_conjectures_for_llm(
         self,
@@ -1074,6 +1085,16 @@ class Database:
         family_counts = Counter(str(record["license_family"]) for record in public_conjectures)
         license_counts = Counter(str(record["normalized_license_url"] or "(missing)") for record in public_conjectures)
         labeled_count = sum(1 for record in public_conjectures if record["latest_label"] is not None)
+        latest_label_counts = Counter(
+            str(record["latest_label"])
+            for record in public_conjectures
+            if record["latest_label"] is not None
+        )
+        published_dates = [
+            str(record["published_at"])[:10]
+            for record in public_papers
+            if str(record.get("published_at", "")).strip()
+        ]
 
         return {
             "generated_at": utc_now_str(),
@@ -1084,14 +1105,43 @@ class Database:
             "conjectures_with_public_text": decision_counts.get("publish_text", 0),
             "conjectures_withheld_text": decision_counts.get("withhold_text", 0),
             "conjectures_with_latest_label": labeled_count,
+            "latest_labels_by_class": dict(sorted(latest_label_counts.items())),
             "conjectures_by_decision": dict(sorted(decision_counts.items())),
             "conjectures_by_reason": dict(sorted(reason_counts.items())),
             "conjectures_by_license_family": dict(sorted(family_counts.items())),
             "conjectures_by_license_url": dict(sorted(license_counts.items())),
+            "published_at_range_start": min(published_dates) if published_dates else "",
+            "published_at_range_end": max(published_dates) if published_dates else "",
         }
 
-    def _build_huggingface_readme(self, manifest: dict[str, Any], *, repo_id: str) -> str:
-        repo_line = f"- Target repo: `{repo_id}`\n" if repo_id else ""
+    def _build_huggingface_readme(
+        self,
+        manifest: dict[str, Any],
+        *,
+        repo_id: str,
+        card_image_path: Path | None = None,
+    ) -> str:
+        repo_line = f"- Hugging Face dataset repo: `{repo_id}`\n" if repo_id else ""
+        published_range = ""
+        if manifest["published_at_range_start"] and manifest["published_at_range_end"]:
+            published_range = (
+                f"- Published paper range: `{manifest['published_at_range_start']}.."
+                f"{manifest['published_at_range_end']}`\n"
+            )
+        label_counts = manifest.get("latest_labels_by_class", {})
+        label_lines = (
+            f"- `real_open_conjecture`: {label_counts.get('real_open_conjecture', 0)}\n"
+            f"- `not_real_conjecture`: {label_counts.get('not_real_conjecture', 0)}\n"
+            f"- `uncertain`: {label_counts.get('uncertain', 0)}\n"
+        )
+        card_image_section = ""
+        if card_image_path is not None:
+            card_image_section = (
+                "## Score Distribution Preview\n\n"
+                "The plot below shows the category-level score density for the currently published "
+                "`real_open_conjecture` subset.\n\n"
+                f"![Score distributions by arXiv category](./{card_image_path.as_posix()})\n\n"
+            )
         return (
             "---\n"
             "license: other\n"
@@ -1102,8 +1152,11 @@ class Database:
             "- license-filtered\n"
             "---\n\n"
             "# Conjectures from Recent arXiv Math Papers\n\n"
-            "This dataset contains conjecture candidates extracted from recent arXiv math papers.\n"
-            "It is prepared from the local SQLite snapshot in this repository.\n\n"
+            "This is the Hugging Face dataset snapshot for the "
+            "[`conjectures-arxiv`](https://github.com/davisrbr/conjectures-arxiv) project.\n"
+            "The pipeline ingests recent `math*` arXiv papers, extracts conjecture-like blocks from source "
+            "LaTeX, labels each candidate with GPT-5 Mini, and scores real/open conjectures for "
+            "interestingness and near-term viability.\n\n"
             "## Snapshot Summary\n\n"
             f"- Papers: {manifest['papers_total']}\n"
             f"- Conjectures: {manifest['conjectures_total']}\n"
@@ -1111,9 +1164,20 @@ class Database:
             f"- Conjectures with text withheld: {manifest['conjectures_withheld_text']}\n"
             f"- Conjectures with latest LLM label metadata: {manifest['conjectures_with_latest_label']}\n"
             f"- Publication policy version: `{manifest['publication_policy_version']}`\n"
+            f"{published_range}"
+            "- Source code and pipeline: "
+            f"[`github.com/davisrbr/conjectures-arxiv`]({SOURCE_REPO_URL})\n"
             f"{repo_line}"
             "\n"
-            "## Licensing Policy\n\n"
+            "## Latest Labels\n\n"
+            f"{label_lines}\n"
+            "## What This Release Includes\n\n"
+            "- A license-filtered public export of paper metadata and conjecture records.\n"
+            "- The latest available LLM label metadata for every conjecture in the snapshot.\n"
+            "- Redaction metadata explaining when text was withheld.\n"
+            "- The full pipeline, scripts, plots, and solver artifacts in the source repo.\n\n"
+            f"{card_image_section}"
+            "## Publication Policy\n\n"
             "This publication pipeline is intentionally aggressive by default:\n"
             "if a paper license is missing or unfamiliar, the conjecture text is still published.\n"
             "Text is withheld only when the license is clearly restrictive for broad republication.\n\n"
@@ -1130,12 +1194,43 @@ class Database:
             "These fields are preserved even when the conjecture text itself is withheld.\n\n"
             "## Files\n\n"
             "- `data/conjectures.jsonl`: public conjecture records with text redacted only when policy requires it\n"
+            "- `data/conjectures.csv`: CSV version of the public conjecture table\n"
             "- `data/papers.jsonl`: paper metadata plus counts of redacted versus published conjectures per paper\n"
+            "- `data/papers.csv`: CSV version of the paper table\n"
             "- `data/publication_manifest.json`: aggregate counts for the publication decision pipeline\n\n"
             "## Notes\n\n"
             "- `license: other` is used because the dataset mixes paper-level licenses and publication decisions.\n"
             "- This is operational guidance for dataset publication, not legal advice.\n"
         )
+
+    def _maybe_copy_hf_card_image(self, *, out_dir: Path) -> Path | None:
+        for candidate in self._hf_card_image_candidates(out_dir=out_dir):
+            if not candidate.exists():
+                continue
+            target_dir = out_dir / "assets"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target = target_dir / candidate.name
+            shutil.copy2(candidate, target)
+            return target.relative_to(out_dir)
+        return None
+
+    def _hf_card_image_candidates(self, *, out_dir: Path) -> list[Path]:
+        parent = out_dir.parent
+        candidates: list[Path] = []
+
+        match = re.search(r"(20\d{6})$", out_dir.name)
+        if match is not None:
+            candidates.append(
+                parent / f"plots_real_conjectures_{match.group(1)}" / HF_CARD_IMAGE_NAME
+            )
+
+        candidates.extend(
+            sorted(
+                parent.glob(f"plots_real_conjectures_*/{HF_CARD_IMAGE_NAME}"),
+                reverse=True,
+            )
+        )
+        return candidates
 
     def _joined_conjecture_records(self) -> list[dict[str, Any]]:
         cursor = self.conn.execute(

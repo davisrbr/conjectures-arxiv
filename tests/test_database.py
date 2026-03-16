@@ -335,6 +335,52 @@ def test_export_huggingface_dataset_redacts_restricted_text(tmp_path) -> None:
     assert "latest LLM label metadata" in readme_text
 
 
+def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) -> None:
+    db = Database(tmp_path / "conjectures.sqlite")
+    db.init_schema()
+    paper = _sample_paper()
+    db.upsert_paper(paper)
+    db.insert_conjectures(paper.arxiv_id, [_sample_conjecture()])
+    conjecture_id = db.list_conjectures_for_llm(model="gpt-5-mini")[0]["conjecture_id"]
+    db.upsert_llm_label(
+        conjecture_id=int(conjecture_id),
+        model="gpt-5-mini",
+        label="real_open_conjecture",
+        confidence=0.82,
+        interestingness_score=0.65,
+        interestingness_confidence=0.62,
+        interestingness_rationale="Interesting.",
+        viability_score=0.41,
+        viability_confidence=0.4,
+        viability_rationale="Viable.",
+        assessment_version="test-v1",
+        rationale="Rationale.",
+        evidence_snippet="Snippet.",
+        raw_response_json='{"label":"real_open_conjecture"}',
+    )
+
+    plot_dir = tmp_path / "plots_real_conjectures_20260316"
+    plot_dir.mkdir()
+    plot_path = plot_dir / "real_conjectures_category_kde_scores.png"
+    plot_path.write_bytes(b"png")
+
+    exported = db.export_huggingface_dataset(tmp_path / "hf_dataset_20260316", repo_id="alice/conjectures-arxiv")
+    db.close()
+
+    manifest = json.loads(exported["hf_manifest_json"].read_text(encoding="utf-8"))
+    assert manifest["latest_labels_by_class"] == {"real_open_conjecture": 1}
+    assert manifest["published_at_range_start"] == "2026-03-01"
+    assert manifest["published_at_range_end"] == "2026-03-01"
+
+    assert exported["hf_card_image"].exists()
+    assert exported["hf_card_image"].read_bytes() == b"png"
+
+    readme_text = exported["hf_readme"].read_text(encoding="utf-8")
+    assert "github.com/davisrbr/conjectures-arxiv" in readme_text
+    assert "./assets/real_conjectures_category_kde_scores.png" in readme_text
+    assert "Score Distribution Preview" in readme_text
+
+
 def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:
     db = Database(tmp_path / "conjectures.sqlite")
     db.init_schema()
