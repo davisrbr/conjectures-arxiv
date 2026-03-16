@@ -4,7 +4,7 @@ This note documents the Lean formalization for Attempt 10, the confirmation of C
 
 ## Scope
 
-The Lean proof is in [../QuasimodularSturm/Attempts/HilbertDepth.lean](../QuasimodularSturm/Attempts/HilbertDepth.lean).
+The Lean proof is in [../HilbertDepth.lean](../HilbertDepth.lean).
 
 The main theorems are:
 
@@ -72,8 +72,8 @@ So this note should be read as a completed formal verification of the four conje
 
 ## Verification
 
-The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean).
+The formalization is re-exported from [../ConjecturesArxiv.lean](../ConjecturesArxiv.lean).
 
-`~/.elan/bin/lake build QuasimodularSturm.Attempts.HilbertDepth` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake build HilbertDepth` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
 
-`~/.elan/bin/lake build QuasimodularSturm` also succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake build ConjecturesArxiv` also succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.

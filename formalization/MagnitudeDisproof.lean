@@ -3,7 +3,7 @@ import Mathlib
 open scoped Topology
 open Filter Matrix
 
-namespace QuasimodularSturm
+namespace MagnitudeDisproof
 
 section KMSFour
 
@@ -246,4 +246,4 @@ theorem attemptNineDet_div_rsq_not_tendsto_conjectured :
 
 end MagnitudeCounterexample
 
-end QuasimodularSturm
+end MagnitudeDisproof

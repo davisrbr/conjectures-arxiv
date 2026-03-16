@@ -4,7 +4,7 @@ This note documents the Lean formalization for Attempt 3, the disconfirmation of
 
 ## Scope
 
-The Lean proof is in [../QuasimodularSturm/Attempts/SteinDisproof.lean](../QuasimodularSturm/Attempts/SteinDisproof.lean).
+The Lean proof is in [../SteinDisproof.lean](../SteinDisproof.lean).
 
 The main theorem is `stein_conjecture_disconfirmed`. It formalizes the following obstruction:
 
@@ -38,4 +38,4 @@ So the Lean theorem should be read as a formal disproof of the conjecture as pri
 
 ## Verification
 
-The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean), and `~/.elan/bin/lake build` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+The formalization is re-exported from [../ConjecturesArxiv.lean](../ConjecturesArxiv.lean), and `~/.elan/bin/lake build SteinDisproof` together with `~/.elan/bin/lake build ConjecturesArxiv` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.

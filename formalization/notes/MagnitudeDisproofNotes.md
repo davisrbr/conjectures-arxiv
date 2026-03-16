@@ -4,7 +4,7 @@ This note documents the Lean formalization for Attempt 9, the disconfirmation of
 
 ## Scope
 
-The Lean proof is in [../QuasimodularSturm/Attempts/MagnitudeDisproof.lean](../QuasimodularSturm/Attempts/MagnitudeDisproof.lean).
+The Lean proof is in [../MagnitudeDisproof.lean](../MagnitudeDisproof.lean).
 
 The main theorems are:
 
@@ -47,8 +47,8 @@ Those are natural next extensions, but they are not needed to refute the printed
 
 ## Verification
 
-The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean).
+The formalization is re-exported from [../ConjecturesArxiv.lean](../ConjecturesArxiv.lean).
 
-`~/.elan/bin/lake build QuasimodularSturm.Attempts.MagnitudeDisproof` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake build MagnitudeDisproof` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
 
-`~/.elan/bin/lake build QuasimodularSturm` also succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake build ConjecturesArxiv` also succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.

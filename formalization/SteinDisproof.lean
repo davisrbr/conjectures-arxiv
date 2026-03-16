@@ -1,6 +1,6 @@
 import Mathlib
 
-namespace QuasimodularSturm
+namespace SteinDisproof
 
 /--
 The Stein operator appearing in the disconfirmed conjecture from the stochastic-approximation
@@ -64,4 +64,4 @@ theorem stein_conjecture_disconfirmed (m : ℕ) (σ c : ℝ) :
   intro g hg
   simpa using no_contDiff_solution_for_abs (m := m) (σ := σ) (c := c) (g := g) hg
 
-end QuasimodularSturm
+end SteinDisproof

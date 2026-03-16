@@ -1,11 +1,11 @@
 import Mathlib
-import QuasimodularSturm.Attempts.XiZeroLimitAnalytic
+import XiZeroLimit.Analytic
 
 open scoped BigOperators Polynomial
 open Filter
 open PowerSeries
 
-namespace QuasimodularSturm
+namespace XiZeroLimit
 
 section SmallestValue
 
@@ -2683,7 +2683,7 @@ theorem neg_coeff_one_div_coeff_zero_eq_sumInv_rootsToFinset
 
 end PolynomialRoots
 
-section XiZeroLimit
+section ZeroLimitTheorems
 
 /--
 Correct endgame of the `\widetilde Ξ_n` proof: for each `n`, let `roots n` enumerate the positive
@@ -2947,6 +2947,6 @@ theorem xi_smallestRoot_tendsto_zero_of_solverRawAdaptedXi :
   exact xi_smallestRoot_tendsto_zero_of_solverRawAdaptedXi_secantRatio
     solverRawAdaptedXi_coeff_ratio_eq_secantEulerRatioShift
 
-end XiZeroLimit
+end ZeroLimitTheorems
 
-end QuasimodularSturm
+end XiZeroLimit

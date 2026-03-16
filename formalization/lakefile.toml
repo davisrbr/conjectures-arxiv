@@ -1,7 +1,7 @@
-name = "QuasimodularSturm"
+name = "ConjecturesArxivFormalization"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["QuasimodularSturm"]
+defaultTargets = ["ConjecturesArxiv"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -15,4 +15,22 @@ scope = "leanprover-community"
 rev = "v4.28.0"
 
 [[lean_lib]]
+name = "ConjecturesArxiv"
+
+[[lean_lib]]
 name = "QuasimodularSturm"
+
+[[lean_lib]]
+name = "HilbertDepth"
+
+[[lean_lib]]
+name = "MagnitudeDisproof"
+
+[[lean_lib]]
+name = "GeneralSGDMomentDisproof"
+
+[[lean_lib]]
+name = "SteinDisproof"
+
+[[lean_lib]]
+name = "XiZeroLimit"

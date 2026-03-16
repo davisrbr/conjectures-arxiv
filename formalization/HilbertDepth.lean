@@ -4,8 +4,6 @@ open scoped BigOperators
 
 noncomputable section
 
-namespace QuasimodularSturm
-
 namespace HilbertDepth
 
 lemma log_two_pos : 0 < Real.log 2 := by
@@ -911,5 +909,3 @@ theorem attemptTen_part_d {s : ℕ} (hs : 1 ≤ s) {k : ℝ} (hk : rThreshold (2
   exact rProd_le_two (by omega) hk
 
 end HilbertDepth
-
-end QuasimodularSturm

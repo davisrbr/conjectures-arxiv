@@ -32,7 +32,7 @@ We now have a Lean formalization for two different versions of Attempt 16. One f
 natural repaired version of the conjecture, where the missing mean-zero noise assumption is put
 back and the argument is carried out in the quadratic `h = 2` case so that the SGD recursion is a
 linear AR(1) process. The other formalizes the literal printed statement as written. The note [../../formalization/notes/GeneralSGDMomentDisproofNotes.md](../../formalization/notes/GeneralSGDMomentDisproofNotes.md)
-links the proof file [../../formalization/QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean](../../formalization/QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean).
+links the proof file [../../formalization/GeneralSGDMomentDisproof.lean](../../formalization/GeneralSGDMomentDisproof.lean).
 
 The substantive route matches the solver's natural-language argument. It proceeds in two stages.
 First we shore up the conjecture by putting back the mean-zero noise assumption omitted from the
@@ -78,7 +78,7 @@ This remains the cleanest positive theorem closure in the full 20-attempt set. T
 
 ### The Hilbert-depth inequalities: full formalization added
 
-We now also have a Lean note for this proof route. The note [../../formalization/notes/HilbertDepthNotes.md](../../formalization/notes/HilbertDepthNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/Attempts/HilbertDepth.lean](../../formalization/QuasimodularSturm/Attempts/HilbertDepth.lean).
+We now also have a Lean note for this proof route. The note [../../formalization/notes/HilbertDepthNotes.md](../../formalization/notes/HilbertDepthNotes.md) explains the scope of the formalization and links the proof file [../../formalization/HilbertDepth.lean](../../formalization/HilbertDepth.lean).
 
 What is formalized is the full four-part inequality package from Conjecture 4.1 itself: monotonicity in `k`, reduction to the threshold cases, reflected pair-product identities, the elementary two-factor exponential bound, and the explicit endpoint algebra needed for the `P`, `Q`, and `R` product families.
 
@@ -90,7 +90,7 @@ These still look like the two clearest negative results in the full 20-attempt s
 
 ### The magnitude asymptotic conjecture: formalization attempt added
 
-We now also have a Lean note for the magnitude counterexample. The note [../../formalization/notes/MagnitudeDisproofNotes.md](../../formalization/notes/MagnitudeDisproofNotes.md) explains the scope of the formalization and links the proof file [../../formalization/QuasimodularSturm/Attempts/MagnitudeDisproof.lean](../../formalization/QuasimodularSturm/Attempts/MagnitudeDisproof.lean).
+We now also have a Lean note for the magnitude counterexample. The note [../../formalization/notes/MagnitudeDisproofNotes.md](../../formalization/notes/MagnitudeDisproofNotes.md) explains the scope of the formalization and links the proof file [../../formalization/MagnitudeDisproof.lean](../../formalization/MagnitudeDisproof.lean).
 
 What is formalized is the explicit `F={0,1}` disproof: the `4 × 4` similarity matrix for the vertices `{-r, r, 1-r, 1+r}`, the exact determinant formula
 

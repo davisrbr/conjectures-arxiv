@@ -1,4 +1,4 @@
-import QuasimodularSturm.Sturm.DiagonalCriterion
+import QuasimodularSturm.DiagonalCriterion
 
 open scoped BigOperators
 

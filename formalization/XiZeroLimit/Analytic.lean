@@ -4,7 +4,7 @@ open scoped BigOperators Polynomial
 open Filter
 open PowerSeries
 
-namespace QuasimodularSturm
+namespace XiZeroLimit
 
 section SecantEuler
 
@@ -642,4 +642,4 @@ theorem coeff_bernoulliQuarterOddSeries_odd_eq_dirichletBetaOddShift (n : ℕ) :
 
 end BernoulliQuarter
 
-end QuasimodularSturm
+end XiZeroLimit

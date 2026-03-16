@@ -1,6 +1,6 @@
 import Mathlib
 
-namespace QuasimodularSturm
+namespace GeneralSGDMomentDisproof
 
 open MeasureTheory Filter
 open scoped Topology BigOperators
@@ -1378,4 +1378,4 @@ theorem attemptSixteen_conjecture_disconfirmed :
 
 end
 
-end QuasimodularSturm
+end GeneralSGDMomentDisproof
