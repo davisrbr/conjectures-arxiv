@@ -3,5 +3,6 @@ import QuasimodularSturm.Sturm.DiagonalCriterion
 import QuasimodularSturm.Sturm.Concrete
 import QuasimodularSturm.Attempts.HilbertDepth
 import QuasimodularSturm.Attempts.MagnitudeDisproof
+import QuasimodularSturm.Attempts.GeneralSGDMomentDisproof
 import QuasimodularSturm.Attempts.SteinDisproof
 import QuasimodularSturm.Attempts.XiZeroLimit
