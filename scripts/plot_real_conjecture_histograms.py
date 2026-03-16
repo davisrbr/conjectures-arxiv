@@ -12,6 +12,7 @@ from typing import Iterable
 
 WIDTH = 1400
 HEIGHT = 900
+PNG_SCALE = 2
 MARGIN_LEFT = 105
 MARGIN_RIGHT = 40
 MARGIN_TOP = 86
@@ -56,7 +57,7 @@ MATH_CATEGORY_NAMES = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create SVG histogram plots for labeled real conjectures.")
+    parser = argparse.ArgumentParser(description="Create PNG histogram plots for labeled real conjectures.")
     parser.add_argument("--db-path", required=True)
     parser.add_argument("--model", default="gpt-5-mini")
     parser.add_argument("--output-dir", required=True)
@@ -253,9 +254,7 @@ def render_category_score_panels(rows: list[tuple[str, float, float]]) -> str:
     right_panel_x = left_panel_x + panel_label_width + panel_inner_width + panel_gap
     x_ticks = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
-    svg: list[str] = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
-    ]
+    svg: list[str] = [svg_open_tag(width, height)]
     svg.append(f'<rect width="{width}" height="{height}" fill="{BG_COLOR}" />')
     svg.append(
         f'<text x="{width / 2:.1f}" y="48" text-anchor="middle" font-size="34" font-weight="700" fill="{TEXT_COLOR}">Category-Level Scores</text>'
@@ -333,9 +332,7 @@ def render_category_kde_panels(rows: list[tuple[str, float, float]]) -> str:
     right_panel_x = left_panel_x + panel_label_width + panel_inner_width + panel_gap
     x_ticks = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
-    svg: list[str] = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
-    ]
+    svg: list[str] = [svg_open_tag(width, height)]
     svg.append(f'<rect width="{width}" height="{height}" fill="{BG_COLOR}" />')
     svg.append(
         f'<text x="{width / 2:.1f}" y="48" text-anchor="middle" font-size="34" font-weight="700" fill="{TEXT_COLOR}">Score Distributions by arXiv Category</text>'
@@ -726,11 +723,15 @@ def tick_values(max_value: int) -> list[int]:
     return list(range(0, top + step, step))
 
 
-def svg_header() -> str:
+def svg_open_tag(width: int, height: int) -> str:
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" '
-        f'viewBox="0 0 {WIDTH} {HEIGHT}">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * PNG_SCALE}" height="{height * PNG_SCALE}" '
+        f'viewBox="0 0 {width} {height}">'
     )
+
+
+def svg_header() -> str:
+    return svg_open_tag(WIDTH, HEIGHT)
 
 
 def write_plot_png(path: Path, content: str) -> None:
