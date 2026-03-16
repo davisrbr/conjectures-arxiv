@@ -6,8 +6,8 @@ This note documents the Lean formalization for Attempt 22, the confirmation of t
 
 The Lean development is in:
 
-- [../QuasimodularSturm/Attempts/XiZeroLimit.lean](../QuasimodularSturm/Attempts/XiZeroLimit.lean)
-- [../QuasimodularSturm/Attempts/XiZeroLimitAnalytic.lean](../QuasimodularSturm/Attempts/XiZeroLimitAnalytic.lean)
+- [../XiZeroLimit.lean](../XiZeroLimit.lean)
+- [../XiZeroLimit/Analytic.lean](../XiZeroLimit/Analytic.lean)
 
 The main theorem is:
 
@@ -72,9 +72,9 @@ The conjecture itself is formalized, but the whole paper is not.
 
 ## Verification
 
-The formalization is re-exported from [../QuasimodularSturm.lean](../QuasimodularSturm.lean).
+The formalization is re-exported from [../ConjecturesArxiv.lean](../ConjecturesArxiv.lean).
 
-`~/.elan/bin/lake build QuasimodularSturm.Attempts.XiZeroLimit` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
+`~/.elan/bin/lake build XiZeroLimit` succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.
 
-`~/.elan/bin/lake env lean /Users/davisbrown/conjectures-arxiv/formalization/QuasimodularSturm/Attempts/XiZeroLimit.lean`
+`~/.elan/bin/lake env lean /Users/davisbrown/conjectures-arxiv/formalization/XiZeroLimit.lean`
 succeeds in `/Users/davisbrown/conjectures-arxiv/formalization`.

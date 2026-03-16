@@ -4,7 +4,7 @@ This note documents the Lean formalization for Attempt 16, the disconfirmation o
 
 ## Scope
 
-The Lean proof is in [../QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean](../QuasimodularSturm/Attempts/GeneralSGDMomentDisproof.lean).
+The Lean proof is in [../GeneralSGDMomentDisproof.lean](../GeneralSGDMomentDisproof.lean).
 
 The file now contains three connected pieces:
 
@@ -91,7 +91,7 @@ claims cleanly.
 
 The current file has been verified with
 
-- `lake build QuasimodularSturm.Attempts.GeneralSGDMomentDisproof`
-- `lake build QuasimodularSturm`
+- `lake build GeneralSGDMomentDisproof`
+- `lake build ConjecturesArxiv`
 
 in `/Users/davisbrown/conjectures-arxiv/formalization`.
