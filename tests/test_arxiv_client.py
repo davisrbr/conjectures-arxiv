@@ -1,5 +1,7 @@
 from datetime import date
 
+import requests
+
 from conjectures_arxiv.arxiv_client import ArxivClient, format_arxiv_date_range
 
 
@@ -56,16 +58,29 @@ class _FakeResponse:
 class _FakeSession:
     def __init__(self) -> None:
         self.headers = {}
-        self.calls: list[str] = []
+        self.calls: list[tuple[str, dict | None]] = []
 
     def get(self, url, params=None, timeout=60):  # noqa: ANN001
-        del params, timeout
-        self.calls.append(url)
+        del timeout
+        self.calls.append((url, params))
         if "api/query" in url:
             return _FakeResponse(SAMPLE_FEED_NO_LICENSE)
         if "/abs/" in url:
             return _FakeResponse(SAMPLE_ABS_HTML)
         raise AssertionError(f"Unexpected URL: {url}")
+
+
+class _RetrySession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls = 0
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        del url, params, timeout
+        self.calls += 1
+        if self.calls == 1:
+            raise requests.ReadTimeout("timed out")
+        return _FakeResponse(SAMPLE_FEED)
 
 
 def test_format_arxiv_date_range() -> None:
@@ -102,4 +117,24 @@ def test_iter_math_papers_falls_back_to_abs_license() -> None:
     assert len(papers) == 1
     paper = papers[0]
     assert paper.license_url == "https://creativecommons.org/licenses/by/4.0/"
-    assert any("/abs/2603.00001v1" in call for call in session.calls)
+    assert any("/abs/2603.00001v1" in call[0] for call in session.calls)
+
+
+def test_iter_math_papers_passes_start_offset() -> None:
+    session = _FakeSession()
+    client = ArxivClient(session=session, page_size=1)
+
+    list(client.iter_math_papers(date(2026, 3, 1), date(2026, 3, 3), max_results=1, start_offset=400))
+
+    api_calls = [call for call in session.calls if "api/query" in call[0]]
+    assert api_calls[0][1]["start"] == 400
+
+
+def test_iter_math_papers_retries_feed_fetch() -> None:
+    session = _RetrySession()
+    client = ArxivClient(session=session, page_size=1, page_retry_attempts=2, retry_sleep_seconds=0)
+
+    papers = list(client.iter_math_papers(date(2026, 3, 1), date(2026, 3, 3), max_results=1))
+
+    assert len(papers) == 1
+    assert session.calls == 2

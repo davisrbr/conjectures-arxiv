@@ -39,6 +39,7 @@ class IngestionPipeline:
         from_date: date,
         to_date: date,
         max_papers: int | None = None,
+        start_offset: int = 0,
         sleep_seconds: float = 0.2,
     ) -> IngestionResult:
         run_id = self.db.start_run(from_date=from_date.isoformat(), to_date=to_date.isoformat())
@@ -54,6 +55,7 @@ class IngestionPipeline:
                 from_date=from_date,
                 to_date=to_date,
                 max_results=max_papers,
+                start_offset=start_offset,
             ):
                 papers_seen += 1
                 self.db.upsert_paper(paper)
