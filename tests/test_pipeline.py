@@ -6,8 +6,12 @@ from conjectures_arxiv.pipeline import IngestionPipeline
 
 
 class FakeArxivClient:
-    def iter_math_papers(self, from_date, to_date, max_results=None):
+    def __init__(self) -> None:
+        self.start_offsets: list[int] = []
+
+    def iter_math_papers(self, from_date, to_date, max_results=None, start_offset=0):
         del from_date, to_date, max_results
+        self.start_offsets.append(start_offset)
         yield Paper(
             arxiv_id="2603.00077v1",
             title="Pipeline Test",
@@ -41,12 +45,14 @@ def test_pipeline_ingest(tmp_path) -> None:
     db = Database(tmp_path / "c.sqlite")
     db.init_schema()
 
-    pipeline = IngestionPipeline(db=db, arxiv_client=FakeArxivClient(), source_fetcher=FakeSourceFetcher())
-    result = pipeline.ingest(from_date=date(2026, 2, 25), to_date=date(2026, 3, 3), sleep_seconds=0)
+    arxiv_client = FakeArxivClient()
+    pipeline = IngestionPipeline(db=db, arxiv_client=arxiv_client, source_fetcher=FakeSourceFetcher())
+    result = pipeline.ingest(from_date=date(2026, 2, 25), to_date=date(2026, 3, 3), start_offset=17, sleep_seconds=0)
 
     assert result.papers_seen == 1
     assert result.papers_stored == 1
     assert result.conjectures_stored == 1
     assert result.errors == 0
+    assert arxiv_client.start_offsets == [17]
 
     db.close()

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from conjectures_arxiv.cli import main
+from conjectures_arxiv.cli import build_parser, main
 from conjectures_arxiv.conjecture_extractor import ExtractedConjecture
 from conjectures_arxiv.database import Database
 from conjectures_arxiv.models import Paper
@@ -111,3 +111,21 @@ def test_export_hf_command_builds_snapshot(tmp_path) -> None:
     assert (output_dir / "data" / "publication_manifest.json").exists()
     conjectures_text = (output_dir / "data" / "conjectures.jsonl").read_text(encoding="utf-8")
     assert '"latest_viability_score": 0.66' in conjectures_text
+
+
+def test_ingest_range_parser_accepts_start_offset() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "ingest-range",
+            "--from-date",
+            "2026-03-01",
+            "--to-date",
+            "2026-03-02",
+            "--start-offset",
+            "400",
+        ]
+    )
+
+    assert args.start_offset == 400

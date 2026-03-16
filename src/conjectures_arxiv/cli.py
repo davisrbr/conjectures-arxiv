@@ -126,6 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _add_ingest_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--db-path", default="data/conjectures.sqlite")
     parser.add_argument("--max-papers", type=int, default=None)
+    parser.add_argument("--start-offset", type=int, default=0)
     parser.add_argument("--sleep-seconds", type=float, default=0.2)
     parser.add_argument("--output-dir", default="data/exports")
     parser.add_argument("--with-parquet", action="store_true")
@@ -152,6 +153,7 @@ def cmd_ingest_range(args: argparse.Namespace) -> int:
         from_date=args.from_date,
         to_date=args.to_date,
         max_papers=args.max_papers,
+        start_offset=args.start_offset,
         sleep_seconds=args.sleep_seconds,
         output_dir=args.output_dir,
         with_parquet=args.with_parquet,
@@ -171,6 +173,7 @@ def cmd_ingest_week(args: argparse.Namespace) -> int:
         from_date=from_date,
         to_date=to_date,
         max_papers=args.max_papers,
+        start_offset=args.start_offset,
         sleep_seconds=args.sleep_seconds,
         output_dir=args.output_dir,
         with_parquet=args.with_parquet,
@@ -188,6 +191,7 @@ def _run_ingest(
     from_date: date,
     to_date: date,
     max_papers: int | None,
+    start_offset: int,
     sleep_seconds: float,
     output_dir: str,
     with_parquet: bool,
@@ -199,6 +203,8 @@ def _run_ingest(
 ) -> int:
     if from_date > to_date:
         raise ValueError(f"from-date ({from_date}) cannot be after to-date ({to_date})")
+    if start_offset < 0:
+        raise ValueError(f"start-offset ({start_offset}) cannot be negative")
 
     db = Database(db_path)
     db.init_schema()
@@ -209,6 +215,7 @@ def _run_ingest(
             from_date=from_date,
             to_date=to_date,
             max_papers=max_papers,
+            start_offset=start_offset,
             sleep_seconds=sleep_seconds,
         )
 

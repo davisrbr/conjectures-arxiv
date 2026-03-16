@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime
 import html
 import re
+import time
 import xml.etree.ElementTree as ET
 
 import requests
@@ -40,9 +41,19 @@ def format_arxiv_date_range(from_date: date, to_date: date) -> str:
 
 
 class ArxivClient:
-    def __init__(self, session: requests.Session | None = None, page_size: int = 200) -> None:
+    def __init__(
+        self,
+        session: requests.Session | None = None,
+        page_size: int = 200,
+        request_timeout: int = 60,
+        page_retry_attempts: int = 3,
+        retry_sleep_seconds: float = 2.0,
+    ) -> None:
         self.session = session or requests.Session()
         self.page_size = page_size
+        self.request_timeout = request_timeout
+        self.page_retry_attempts = max(1, page_retry_attempts)
+        self.retry_sleep_seconds = max(0.0, retry_sleep_seconds)
         self.session.headers.setdefault("User-Agent", "conjectures-arxiv/0.1.0")
 
     def iter_math_papers(
@@ -50,11 +61,12 @@ class ArxivClient:
         from_date: date,
         to_date: date,
         max_results: int | None = None,
+        start_offset: int = 0,
     ):
         range_expr = format_arxiv_date_range(from_date=from_date, to_date=to_date)
         search_query = f"cat:math* AND submittedDate:{range_expr}"
 
-        start = 0
+        start = max(0, start_offset)
         yielded = 0
         total_results = None
 
@@ -66,8 +78,7 @@ class ArxivClient:
                 "start": start,
                 "max_results": self.page_size,
             }
-            response = self.session.get(ARXIV_API_URL, params=params, timeout=60)
-            response.raise_for_status()
+            response = self._get_feed_page(params=params)
 
             page = self.parse_atom_feed(response.text)
             if total_results is None:
@@ -89,6 +100,23 @@ class ArxivClient:
             start += len(page.papers)
             if start >= total_results:
                 break
+
+    def _get_feed_page(self, *, params: dict[str, object]):
+        last_exc: Exception | None = None
+        for attempt in range(self.page_retry_attempts):
+            try:
+                response = self.session.get(ARXIV_API_URL, params=params, timeout=self.request_timeout)
+                response.raise_for_status()
+                return response
+            except requests.RequestException as exc:
+                last_exc = exc
+                if attempt + 1 >= self.page_retry_attempts:
+                    break
+                if self.retry_sleep_seconds > 0:
+                    time.sleep(self.retry_sleep_seconds * (attempt + 1))
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("Failed to fetch arXiv feed page")
 
     def parse_atom_feed(self, xml_text: str) -> FeedPage:
         root = ET.fromstring(xml_text)
@@ -165,7 +193,7 @@ class ArxivClient:
 
     def _fetch_license_from_abs(self, *, abs_url: str) -> str:
         try:
-            response = self.session.get(abs_url, timeout=60)
+            response = self.session.get(abs_url, timeout=self.request_timeout)
             response.raise_for_status()
         except requests.RequestException:
             return ""
