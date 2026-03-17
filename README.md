@@ -2,11 +2,11 @@
 
 This project ingests recent papers announced on arXiv's math page, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260317.sqlite](data/conjectures_month_live_20260317.sqlite), contains 890 (likely open) conjectures from 6661 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between February 2, 2026 and March 16, 2026, plus 7 newly announced cross-listed papers with older original arXiv publication dates.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260317.sqlite](data/conjectures_month_live_20260317.sqlite), contains 890 (likely open) conjectures from 6661 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between February 2, 2026 and March 16, 2026.
 
 For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlements of the conjecture that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). 
 
-Finally, we used Codex (again, with GPT-5.4) to attempt to formalize 6 of the 20 proof attempts in Lean, [linked here](formalization/notes). In 4 of 6 cases, the system claims that the formalization is successful. These formalization attempts required Codex (GPT-5.4 xhigh Fast) from between a couple hours to well over 30 hours of wall-clock time. These are LLM generated and model-reported, and they have not been independently verified. 
+Finally, we used Codex (with GPT-5.4) to attempt to formalize 6 of the 20 proof attempts in Lean, [linked here](formalization/notes). In 4 of 6 cases, the system claims that the formalization is successful. These formalization attempts required Codex (GPT-5.4 xhigh Fast) from between a couple hours to well over 30 hours of wall-clock time. These are LLM generated and model-reported, and they have not been independently verified. 
 
 ## Pipeline
 
