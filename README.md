@@ -2,7 +2,7 @@
 
 This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260306.sqlite](data/conjectures_month_live_20260306.sqlite), contains 676 (likely open) conjectures, from papers published between February 2, 2026 and March 4, 2026.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260316.sqlite](data/conjectures_month_live_20260316.sqlite), contains 850 (likely open) conjectures, from papers published between February 2, 2026 and March 13, 2026.
 
 For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlement-quality outcomes that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). These are LLM generated and model-reported, and they have not been independently verified.
 
@@ -28,6 +28,32 @@ Optional extras:
 - Add `parquet` if you want Parquet export support: `pip install -e '.[dev,llm,parquet]'`
 - Add `huggingface` if you want Hugging Face uploads: `pip install -e '.[dev,llm,huggingface]'`
 - Set `OPENAI_API_KEY` before running `filter-llm` or `solve-llm`, and `HF_TOKEN` before running `publish-hf`
+
+## Lean Formalization Workspace
+
+The Lean 4 formalization workspace lives in [formalization/](formalization/). It is a separate Lake project pinned by [formalization/lean-toolchain](formalization/lean-toolchain).
+
+Recommended setup:
+
+```bash
+curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+source "$HOME/.elan/env"
+cd formalization
+lake exe cache get
+lake build QuasimodularSturm
+```
+
+To build a single module instead:
+
+```bash
+cd formalization
+lake build QuasimodularSturm.Attempts.HilbertDepth
+lake build QuasimodularSturm.Attempts.MagnitudeDisproof
+lake build QuasimodularSturm.Attempts.SteinDisproof
+lake build QuasimodularSturm.Attempts.XiZeroLimit
+```
+
+Additional notes on the Lean workspace, module layout, and verification status are in [formalization/README.md](formalization/README.md).
 
 ## Quick Start
 
@@ -108,16 +134,16 @@ conjectures-arxiv publish-hf \
 
 ## Current Snapshot
 
-Latest labeled datasets can be found in `data/exports_month_live_20260306/*`
+Latest labeled datasets can be found in `data/exports_month_live_20260316/*`
 
 Current totals:
 
-- `papers_seen=4756`
-- `conjecture_candidates=798`
-- `real_open_conjecture=676`
-- `not_real_conjecture=119`
+- `papers_seen=6226`
+- `conjecture_candidates=1019`
+- `real_open_conjecture=850`
+- `not_real_conjecture=166`
 - `uncertain=3`
-- `published_at_range=2026-02-02..2026-03-04`
+- `published_at_range=2026-02-02..2026-03-13`
 
 ## Current Solver Pilot
 
