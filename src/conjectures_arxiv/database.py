@@ -1209,7 +1209,6 @@ class Database:
             "tags:\n"
             "- mathematics\n"
             "- arxiv\n"
-            "- license-filtered\n"
             "---\n\n"
             "# OpenConjecture, a living dataset of mathematics conjectures from the ArXiv\n\n"
             "OpenConjecture is a living dataset of mathematics conjectures extracted from recent arXiv "
