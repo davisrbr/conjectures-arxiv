@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import html
 import re
 import time
@@ -13,11 +13,14 @@ from .models import Paper
 
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
+ARXIV_MATH_PASTWEEK_URL = "https://arxiv.org/list/math/pastweek?show=2000"
 ATOM_NS = {
     "atom": "http://www.w3.org/2005/Atom",
     "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
     "arxiv": "http://arxiv.org/schemas/atom",
 }
+RECENT_SECTION_PATTERN = re.compile(r"<h3>(?P<label>.*?)</h3>(?P<body>.*?)(?=<h3>|</dl>)", flags=re.DOTALL)
+RECENT_ARXIV_ID_PATTERN = re.compile(r"arXiv:(?P<id>\d{4}\.\d{5})(?:v\d+)?")
 LICENSE_REL_PATTERN = re.compile(
     r"""<a[^>]*\brel\s*=\s*["'][^"']*\blicense\b[^"']*["'][^>]*\bhref\s*=\s*["'](?P<href>[^"']+)["']""",
     flags=re.IGNORECASE,
@@ -44,10 +47,10 @@ class ArxivClient:
     def __init__(
         self,
         session: requests.Session | None = None,
-        page_size: int = 200,
-        request_timeout: int = 60,
-        page_retry_attempts: int = 3,
-        retry_sleep_seconds: float = 2.0,
+        page_size: int = 100,
+        request_timeout: int = 120,
+        page_retry_attempts: int = 5,
+        retry_sleep_seconds: float = 5.0,
     ) -> None:
         self.session = session or requests.Session()
         self.page_size = page_size
@@ -63,6 +66,16 @@ class ArxivClient:
         max_results: int | None = None,
         start_offset: int = 0,
     ):
+        recent_cutoff = date.today() - timedelta(days=7)
+        if from_date >= recent_cutoff:
+            announced_ids = self._fetch_recent_math_announcement_ids(from_date=from_date, to_date=to_date)
+            if announced_ids:
+                selected_ids = announced_ids[max(0, start_offset) :]
+                if max_results is not None:
+                    selected_ids = selected_ids[:max_results]
+                yield from self._iter_papers_by_ids(selected_ids)
+                return
+
         range_expr = format_arxiv_date_range(from_date=from_date, to_date=to_date)
         search_query = f"cat:math* AND submittedDate:{range_expr}"
 
@@ -101,14 +114,60 @@ class ArxivClient:
             if start >= total_results:
                 break
 
+    def _fetch_recent_math_announcement_ids(self, *, from_date: date, to_date: date) -> list[str]:
+        response = self.session.get(ARXIV_MATH_PASTWEEK_URL, timeout=self.request_timeout)
+        response.raise_for_status()
+        html_text = response.text
+
+        announced_ids: list[str] = []
+        for match in RECENT_SECTION_PATTERN.finditer(html_text):
+            label_text = html.unescape(match.group("label"))
+            date_text = label_text.split("(", maxsplit=1)[0].strip()
+            try:
+                section_date = datetime.strptime(date_text, "%a, %d %b %Y").date()
+            except ValueError:
+                continue
+            if not (from_date <= section_date <= to_date):
+                continue
+            body = match.group("body")
+            announced_ids.extend(id_match.group("id") for id_match in RECENT_ARXIV_ID_PATTERN.finditer(body))
+
+        return list(dict.fromkeys(announced_ids))
+
+    def _iter_papers_by_ids(self, arxiv_ids: list[str]):
+        for start in range(0, len(arxiv_ids), self.page_size):
+            batch = arxiv_ids[start : start + self.page_size]
+            if not batch:
+                continue
+            params = {
+                "id_list": ",".join(batch),
+                "start": 0,
+                "max_results": len(batch),
+            }
+            response = self._get_feed_page(params=params)
+            page = self.parse_atom_feed(response.text)
+            papers_by_id = {paper.arxiv_id.split("v", maxsplit=1)[0]: paper for paper in page.papers}
+            for arxiv_id in batch:
+                paper = papers_by_id.get(arxiv_id)
+                if paper is None:
+                    continue
+                if not paper.license_url:
+                    fallback = self._fetch_license_from_abs(abs_url=paper.abs_url)
+                    if fallback:
+                        paper = replace(paper, license_url=fallback)
+                yield paper
+
     def _get_feed_page(self, *, params: dict[str, object]):
         last_exc: Exception | None = None
         for attempt in range(self.page_retry_attempts):
             try:
                 response = self.session.get(ARXIV_API_URL, params=params, timeout=self.request_timeout)
                 response.raise_for_status()
+                body = response.text.lstrip()
+                if body.startswith("Rate exceeded."):
+                    raise RuntimeError("arXiv API rate limit exceeded")
                 return response
-            except requests.RequestException as exc:
+            except (requests.RequestException, RuntimeError) as exc:
                 last_exc = exc
                 if attempt + 1 >= self.page_retry_attempts:
                     break

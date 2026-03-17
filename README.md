@@ -1,8 +1,8 @@
 # OpenConjecture, a living dataset of mathematics conjectures from the ArXiv
 
-This project scrapes recent `math*` arXiv papers, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
+This project ingests recent papers announced on arXiv's math page, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260316.sqlite](data/conjectures_month_live_20260316.sqlite), contains 850 (likely open) conjectures, from papers published between February 2, 2026 and March 13, 2026.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260317.sqlite](data/conjectures_month_live_20260317.sqlite), contains 890 (likely open) conjectures from 6661 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between February 2, 2026 and March 16, 2026, plus 7 newly announced cross-listed papers with older original arXiv publication dates.
 
 For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlements of the conjecture that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). 
 
@@ -10,7 +10,7 @@ Finally, we used Codex (again, with GPT-5.4) to attempt to formalize 6 of the 20
 
 ## Pipeline
 
-1. Ingest recent arXiv math papers over a date range (we choose the ~past month).
+1. Ingest recent arXiv math announcements over a date range (we choose the ~past month).
 2. Extract conjecture blocks and store them with paper metadata, including arXiv category, DOI, journal reference, comments, and license.
 3. Label extracted candidates with GPT-5 Mini as `real_open_conjecture`, `not_real_conjecture`, or `uncertain`, and score real conjectures for `interestingness` and near-term solution `viability`, i.e. the tractability.
 4. (Optional) Run GPT-5.4 Thinking (xhigh) to attempt solutions on a subset of the most tractable conjectures.
@@ -125,28 +125,29 @@ export HF_TOKEN=...
 conjectures-arxiv export-hf \
   --db-path data/conjectures.sqlite \
   --output-dir data/huggingface_dataset \
-  --repo-id your-org/conjectures-arxiv
+  --repo-id your-org/openconjecture
 ```
 
 ```bash
 conjectures-arxiv publish-hf \
   --db-path data/conjectures.sqlite \
   --output-dir data/huggingface_dataset \
-  --repo-id your-org/conjectures-arxiv
+  --repo-id your-org/openconjecture
 ```
 
 ## Current Snapshot
 
-Latest labeled datasets can be found in `data/exports_month_live_20260316/*`
+Latest labeled datasets can be found in `data/exports_month_live_20260317/*`
 
 Current totals:
 
-- `papers_seen=6226`
-- `conjecture_candidates=1019`
-- `real_open_conjecture=850`
-- `not_real_conjecture=166`
+- `papers_seen=6661`
+- `conjecture_candidates=1075`
+- `real_open_conjecture=890`
+- `not_real_conjecture=182`
 - `uncertain=3`
-- `published_at_range=2026-02-02..2026-03-13`
+- `published_at_focus_range=2026-02-02..2026-03-16`
+- `older_announced_cross_list_papers=7`
 
 ## Current Solver Pilot
 

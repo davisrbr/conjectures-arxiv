@@ -372,6 +372,9 @@ def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) 
     assert manifest["latest_labels_by_class"] == {"real_open_conjecture": 1}
     assert manifest["published_at_range_start"] == "2026-03-01"
     assert manifest["published_at_range_end"] == "2026-03-01"
+    assert manifest["published_at_focus_range_start"] == "2026-03-01"
+    assert manifest["published_at_focus_range_end"] == "2026-03-01"
+    assert manifest["published_at_outlier_paper_count"] == 0
 
     assert exported["hf_card_image"].exists()
     assert exported["hf_card_image"].read_bytes() == b"png"
@@ -381,7 +384,7 @@ def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) 
     assert "./assets/real_conjectures_category_kde_scores.png" in readme_text
     assert "LLM-labeled conjectures, per field" in readme_text
     assert "OpenConjecture is currently composed of **1** open conjectures." in readme_text
-    assert "This snapshot currently contains 1 extracted candidate conjecture records from 1 recent `math*` arXiv papers" in readme_text
+    assert "This snapshot currently contains 1 extracted candidate conjecture records from 1 papers announced on arXiv's math page" in readme_text
     assert "## This release includes" in readme_text
 
 
