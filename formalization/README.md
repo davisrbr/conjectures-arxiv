@@ -2,8 +2,6 @@
 
 This directory contains the Lean 4 workspace used to formalize selected solver proof attempts from the main `conjectures-arxiv` repository.
 
-The workspace now uses subject-specific module roots. `QuasimodularSturm` names only the original quasimodular Sturm-bound development, while the unrelated formalizations each live under their own top-level modules.
-
 ## Build
 
 From this directory:
@@ -34,12 +32,6 @@ lake build XiZeroLimit
 - `GeneralSGDMomentDisproof`
 - `SteinDisproof`
 - `XiZeroLimit`
-
-[QuasimodularSturm.lean](QuasimodularSturm.lean) remains the root module for the original quasimodular-Sturm development:
-
-- `QuasimodularSturm.Basic`
-- `QuasimodularSturm.DiagonalCriterion`
-- `QuasimodularSturm.Concrete`
 
 ## Structure
 
