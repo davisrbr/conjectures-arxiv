@@ -35,6 +35,23 @@ SAMPLE_FEED = """<?xml version='1.0' encoding='UTF-8'?>
 </feed>
 """
 
+SAMPLE_RECENT_LIST = """
+<html>
+  <body>
+    <dl id='articles'>
+      <h3>Tue, 17 Mar 2026 (showing 2 of 2 entries )</h3>
+      <dt><a href="/abs/2603.15613">arXiv:2603.15613</a></dt>
+      <dd>Paper 1</dd>
+      <dt><a href="/abs/2603.15606">arXiv:2603.15606</a></dt>
+      <dd>Paper 2</dd>
+      <h3>Mon, 16 Mar 2026 (showing 1 of 1 entries )</h3>
+      <dt><a href="/abs/2603.14000">arXiv:2603.14000</a></dt>
+      <dd>Paper 3</dd>
+    </dl>
+  </body>
+</html>
+"""
+
 SAMPLE_FEED_NO_LICENSE = SAMPLE_FEED.replace(
     "<arxiv:license>http://creativecommons.org/licenses/by/4.0/</arxiv:license>\n", ""
 )
@@ -65,6 +82,8 @@ class _FakeSession:
         self.calls.append((url, params))
         if "api/query" in url:
             return _FakeResponse(SAMPLE_FEED_NO_LICENSE)
+        if "list/math/pastweek" in url:
+            return _FakeResponse(SAMPLE_RECENT_LIST)
         if "/abs/" in url:
             return _FakeResponse(SAMPLE_ABS_HTML)
         raise AssertionError(f"Unexpected URL: {url}")
@@ -81,6 +100,59 @@ class _RetrySession:
         if self.calls == 1:
             raise requests.ReadTimeout("timed out")
         return _FakeResponse(SAMPLE_FEED)
+
+
+class _RateLimitSession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls = 0
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        del url, params, timeout
+        self.calls += 1
+        if self.calls == 1:
+            return _FakeResponse("Rate exceeded.")
+        return _FakeResponse(SAMPLE_FEED)
+
+
+class _RecentListSession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls: list[tuple[str, dict | None]] = []
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        del timeout
+        self.calls.append((url, params))
+        if "list/math/pastweek" in url:
+            return _FakeResponse(SAMPLE_RECENT_LIST)
+        if "api/query" in url and params and params.get("id_list") == "2603.15613,2603.15606":
+            return _FakeResponse(
+                SAMPLE_FEED.replace("2603.00001v1", "2603.15613v1")
+                .replace("A Test Math Paper", "Recent Paper One")
+                .replace("<opensearch:totalResults>1</opensearch:totalResults>", "<opensearch:totalResults>2</opensearch:totalResults>")
+                .replace(
+                    "</entry>\n</feed>",
+                    """
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2603.15606v1</id>
+    <updated>2026-03-17T20:00:00Z</updated>
+    <published>2026-03-17T20:00:00Z</published>
+    <title>Recent Paper Two</title>
+    <summary>Some summary text.</summary>
+    <author><name>Third Author</name></author>
+    <arxiv:primary_category term='math.AG' scheme='http://arxiv.org/schemas/atom'/>
+    <category term='math.AG' scheme='http://arxiv.org/schemas/atom'/>
+    <link href='http://arxiv.org/abs/2603.15606v1' rel='alternate' type='text/html'/>
+    <link title='pdf' href='http://arxiv.org/pdf/2603.15606v1' rel='related' type='application/pdf'/>
+  </entry>
+</feed>
+""",
+                    )
+                )
+        if "/abs/" in url:
+            return _FakeResponse(SAMPLE_ABS_HTML)
+        raise AssertionError(f"Unexpected URL: {url} {params}")
 
 
 def test_format_arxiv_date_range() -> None:
@@ -138,3 +210,31 @@ def test_iter_math_papers_retries_feed_fetch() -> None:
 
     assert len(papers) == 1
     assert session.calls == 2
+
+
+def test_iter_math_papers_retries_rate_limit_body() -> None:
+    session = _RateLimitSession()
+    client = ArxivClient(session=session, page_size=1, page_retry_attempts=2, retry_sleep_seconds=0)
+
+    papers = list(client.iter_math_papers(date(2026, 3, 1), date(2026, 3, 3), max_results=1))
+
+    assert len(papers) == 1
+    assert session.calls == 2
+
+
+def test_iter_math_papers_uses_recent_announcement_ids(monkeypatch) -> None:
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):  # noqa: N805
+            return cls(2026, 3, 17)
+
+    monkeypatch.setattr("conjectures_arxiv.arxiv_client.date", _FakeDate)
+    session = _RecentListSession()
+    client = ArxivClient(session=session, page_size=10)
+
+    papers = list(client.iter_math_papers(_FakeDate(2026, 3, 17), _FakeDate(2026, 3, 17)))
+
+    assert [paper.arxiv_id for paper in papers] == ["2603.15613v1", "2603.15606v1"]
+    api_calls = [call for call in session.calls if "api/query" in call[0]]
+    assert len(api_calls) == 1
+    assert api_calls[0][1]["id_list"] == "2603.15613,2603.15606"

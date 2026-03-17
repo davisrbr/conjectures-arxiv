@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 import csv
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 import json
 from pathlib import Path
 import re
@@ -18,6 +18,7 @@ from .models import Paper
 TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
 SOURCE_REPO_URL = "https://github.com/davisrbr/conjectures-arxiv"
 HF_CARD_IMAGE_NAME = "real_conjectures_category_kde_scores.png"
+PUBLISHED_DATE_CLUSTER_GAP_DAYS = 7
 
 
 def utc_now_str() -> str:
@@ -1095,6 +1096,7 @@ class Database:
             for record in public_papers
             if str(record.get("published_at", "")).strip()
         ]
+        published_summary = self._published_date_summary(published_dates)
 
         return {
             "generated_at": utc_now_str(),
@@ -1110,8 +1112,42 @@ class Database:
             "conjectures_by_reason": dict(sorted(reason_counts.items())),
             "conjectures_by_license_family": dict(sorted(family_counts.items())),
             "conjectures_by_license_url": dict(sorted(license_counts.items())),
-            "published_at_range_start": min(published_dates) if published_dates else "",
-            "published_at_range_end": max(published_dates) if published_dates else "",
+            "published_at_range_start": published_summary["range_start"],
+            "published_at_range_end": published_summary["range_end"],
+            "published_at_focus_range_start": published_summary["focus_range_start"],
+            "published_at_focus_range_end": published_summary["focus_range_end"],
+            "published_at_outlier_paper_count": published_summary["outlier_count"],
+        }
+
+    def _published_date_summary(self, published_dates: list[str]) -> dict[str, str | int]:
+        if not published_dates:
+            return {
+                "range_start": "",
+                "range_end": "",
+                "focus_range_start": "",
+                "focus_range_end": "",
+                "outlier_count": 0,
+            }
+
+        parsed_dates = sorted(date.fromisoformat(value) for value in published_dates)
+        unique_dates = sorted(set(parsed_dates))
+
+        focus_start = unique_dates[0]
+        trailing_anchor = unique_dates[-1]
+        for current in reversed(unique_dates[:-1]):
+            if (trailing_anchor - current).days > PUBLISHED_DATE_CLUSTER_GAP_DAYS:
+                focus_start = trailing_anchor
+                break
+            trailing_anchor = current
+            focus_start = current
+
+        outlier_count = sum(1 for value in parsed_dates if value < focus_start)
+        return {
+            "range_start": unique_dates[0].isoformat(),
+            "range_end": unique_dates[-1].isoformat(),
+            "focus_range_start": focus_start.isoformat(),
+            "focus_range_end": unique_dates[-1].isoformat(),
+            "outlier_count": outlier_count,
         }
 
     def _build_huggingface_readme(
@@ -1123,11 +1159,18 @@ class Database:
     ) -> str:
         repo_line = f"- Hugging Face dataset repo: `{repo_id}`\n" if repo_id else ""
         published_range = ""
-        if manifest["published_at_range_start"] and manifest["published_at_range_end"]:
-            published_range = (
-                f"papers currently published between {manifest['published_at_range_start']} "
-                f"and {manifest['published_at_range_end']}"
-            )
+        focus_start = str(manifest.get("published_at_focus_range_start", "")).strip()
+        focus_end = str(manifest.get("published_at_focus_range_end", "")).strip()
+        outlier_count = int(manifest.get("published_at_outlier_paper_count", 0) or 0)
+        if focus_start and focus_end:
+            if outlier_count > 0:
+                published_range = (
+                    f"most papers currently published between {focus_start} and {focus_end}, "
+                    f"plus {outlier_count} newly announced cross-listed papers whose original "
+                    "arXiv publication dates are older"
+                )
+            else:
+                published_range = f"papers currently published between {focus_start} and {focus_end}"
         label_counts = manifest.get("latest_labels_by_class", {})
         open_conjecture_line = (
             "OpenConjecture is currently composed of "
@@ -1136,7 +1179,7 @@ class Database:
         snapshot_counts = (
             "This snapshot currently contains "
             f"{manifest['conjectures_total']} extracted candidate conjecture records from "
-            f"{manifest['papers_total']} recent `math*` arXiv papers"
+            f"{manifest['papers_total']} papers announced on arXiv's math page"
         )
         if published_range:
             snapshot_counts += f", with {published_range}"
@@ -1171,7 +1214,8 @@ class Database:
             "# OpenConjecture, a living dataset of mathematics conjectures from the ArXiv\n\n"
             "OpenConjecture is a living dataset of mathematics conjectures extracted from recent arXiv "
             "papers. The pipeline in "
-            f"[`conjectures-arxiv`]({SOURCE_REPO_URL}) ingests recent `math*` papers, extracts "
+            f"[`conjectures-arxiv`]({SOURCE_REPO_URL}) ingests recent papers announced on arXiv's "
+            "math page, extracts "
             "conjecture-like blocks from source LaTeX, labels each candidate with GPT-5 Mini, and "
             "scores real/open conjectures for interestingness and near-term viability.\n\n"
             f"{open_conjecture_line}\n\n"
