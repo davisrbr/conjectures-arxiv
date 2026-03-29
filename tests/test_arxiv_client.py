@@ -57,6 +57,9 @@ SAMPLE_FEED_NO_LICENSE = SAMPLE_FEED.replace(
 )
 SAMPLE_ABS_HTML = """
 <html>
+  <head>
+    <meta property="og:url" content="https://arxiv.org/abs/2603.00001v7" />
+  </head>
   <body>
     <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">License</a>
   </body>
@@ -155,6 +158,41 @@ class _RecentListSession:
         raise AssertionError(f"Unexpected URL: {url} {params}")
 
 
+class _PartialRateLimitRecentSession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls: list[tuple[str, dict | None]] = []
+        self.id_list_calls = 0
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        del timeout
+        self.calls.append((url, params))
+        if "list/math/pastweek" in url:
+            return _FakeResponse(SAMPLE_RECENT_LIST)
+        if "api/query" in url:
+            self.id_list_calls += 1
+            if self.id_list_calls == 1:
+                return _FakeResponse(
+                    SAMPLE_FEED.replace("2603.00001v1", "2603.15613v1").replace("A Test Math Paper", "Recent Paper One")
+                )
+            raise requests.HTTPError(response=_HTTPStatusResponse(429, "Rate exceeded."))
+        if "/abs/2603.15606" in url:
+            return _FakeResponse(
+                SAMPLE_ABS_HTML.replace("2603.00001v7", "2603.15606v3")
+                .replace("citation_title\" content=\"", "citation_title\" content=\"Recent Paper Two")
+            )
+        raise AssertionError(f"Unexpected URL: {url} {params}")
+
+
+class _HTTPStatusResponse:
+    def __init__(self, status_code: int, text: str) -> None:
+        self.status_code = status_code
+        self.text = text
+
+    def raise_for_status(self) -> None:
+        raise requests.HTTPError(response=self)
+
+
 def test_format_arxiv_date_range() -> None:
     assert format_arxiv_date_range(date(2026, 3, 1), date(2026, 3, 3)) == "[202603010000 TO 202603032359]"
 
@@ -190,6 +228,7 @@ def test_iter_math_papers_falls_back_to_abs_license() -> None:
     paper = papers[0]
     assert paper.license_url == "https://creativecommons.org/licenses/by/4.0/"
     assert any("/abs/2603.00001v1" in call[0] for call in session.calls)
+    assert paper.arxiv_id == "2603.00001v1"
 
 
 def test_iter_math_papers_passes_start_offset() -> None:
@@ -238,3 +277,31 @@ def test_iter_math_papers_uses_recent_announcement_ids(monkeypatch) -> None:
     api_calls = [call for call in session.calls if "api/query" in call[0]]
     assert len(api_calls) == 1
     assert api_calls[0][1]["id_list"] == "2603.15613,2603.15606"
+
+
+def test_paper_from_abs_html_uses_versioned_og_url() -> None:
+    client = ArxivClient()
+
+    paper = client._paper_from_abs_html(arxiv_id="2603.00001", html_text=SAMPLE_ABS_HTML)  # noqa: SLF001
+
+    assert paper.arxiv_id == "2603.00001v7"
+    assert paper.abs_url == "https://arxiv.org/abs/2603.00001v7"
+    assert paper.source_url == "https://arxiv.org/e-print/2603.00001v7"
+
+
+def test_iter_math_papers_recent_fallback_resumes_without_replaying(monkeypatch) -> None:
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):  # noqa: N805
+            return cls(2026, 3, 17)
+
+    monkeypatch.setattr("conjectures_arxiv.arxiv_client.date", _FakeDate)
+    monkeypatch.setattr("conjectures_arxiv.arxiv_client.time.sleep", lambda _: None)
+    session = _PartialRateLimitRecentSession()
+    client = ArxivClient(session=session, page_size=1, page_retry_attempts=1, retry_sleep_seconds=0)
+
+    papers = list(client.iter_math_papers(_FakeDate(2026, 3, 17), _FakeDate(2026, 3, 17)))
+
+    assert [paper.arxiv_id for paper in papers] == ["2603.15613v1", "2603.15606v3"]
+    assert sum(1 for url, _ in session.calls if "/abs/2603.15613" in url) == 0
+    assert sum(1 for url, _ in session.calls if "/abs/2603.15606" in url) == 1
