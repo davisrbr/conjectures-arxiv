@@ -21,6 +21,19 @@ ATOM_NS = {
 }
 RECENT_SECTION_PATTERN = re.compile(r"<h3>(?P<label>.*?)</h3>(?P<body>.*?)(?=<h3>|</dl>)", flags=re.DOTALL)
 RECENT_ARXIV_ID_PATTERN = re.compile(r"arXiv:(?P<id>\d{4}\.\d{5})(?:v\d+)?")
+META_TAG_PATTERN = re.compile(
+    r"""<meta[^>]*\bname\s*=\s*["'](?P<name>[^"']+)["'][^>]*\bcontent\s*=\s*["'](?P<content>[^"']*)["'][^>]*>""",
+    flags=re.IGNORECASE,
+)
+PROPERTY_META_TAG_PATTERN = re.compile(
+    r"""<meta[^>]*\bproperty\s*=\s*["'](?P<name>[^"']+)["'][^>]*\bcontent\s*=\s*["'](?P<content>[^"']*)["'][^>]*>""",
+    flags=re.IGNORECASE,
+)
+PRIMARY_SUBJECT_CODE_PATTERN = re.compile(
+    r"""<span[^>]*class\s*=\s*["'][^"']*\bprimary-subject\b[^"']*["'][^>]*>.*?</span>\s*</td>\s*<td[^>]*>\((?P<code>[^)]+)\)""",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+VERSIONED_ABS_URL_PATTERN = re.compile(r"""https?://arxiv\.org/abs/(?P<id>\d{4}\.\d{5}v\d+)""", flags=re.IGNORECASE)
 LICENSE_REL_PATTERN = re.compile(
     r"""<a[^>]*\brel\s*=\s*["'][^"']*\blicense\b[^"']*["'][^>]*\bhref\s*=\s*["'](?P<href>[^"']+)["']""",
     flags=re.IGNORECASE,
@@ -73,7 +86,7 @@ class ArxivClient:
                 selected_ids = announced_ids[max(0, start_offset) :]
                 if max_results is not None:
                     selected_ids = selected_ids[:max_results]
-                yield from self._iter_papers_by_ids(selected_ids)
+                yield from self._iter_recent_papers(selected_ids)
                 return
 
         range_expr = format_arxiv_date_range(from_date=from_date, to_date=to_date)
@@ -157,6 +170,37 @@ class ArxivClient:
                         paper = replace(paper, license_url=fallback)
                 yield paper
 
+    def _iter_recent_papers(self, arxiv_ids: list[str]):
+        use_abs_fallback = False
+        for start in range(0, len(arxiv_ids), self.page_size):
+            batch = arxiv_ids[start : start + self.page_size]
+            if not batch:
+                continue
+            if use_abs_fallback:
+                yield from self._iter_papers_by_abs_pages(batch)
+                continue
+            try:
+                yield from self._iter_papers_by_ids(batch)
+            except Exception as exc:  # noqa: BLE001
+                if not self._is_rate_limit_error(exc):
+                    raise
+                use_abs_fallback = True
+                yield from self._iter_papers_by_abs_pages(batch)
+
+    def _iter_papers_by_abs_pages(self, arxiv_ids: list[str]):
+        for arxiv_id in arxiv_ids:
+            abs_url = f"https://arxiv.org/abs/{arxiv_id}"
+            response = self.session.get(abs_url, timeout=self.request_timeout)
+            response.raise_for_status()
+            paper = self._paper_from_abs_html(arxiv_id=arxiv_id, html_text=response.text)
+            if not paper.license_url:
+                fallback = self._extract_license_from_abs_html(response.text)
+                if fallback:
+                    paper = replace(paper, license_url=fallback)
+            yield paper
+            # Keep fallback scraping polite without making weekly ingestion unreasonably slow.
+            time.sleep(0.2)
+
     def _get_feed_page(self, *, params: dict[str, object]):
         last_exc: Exception | None = None
         for attempt in range(self.page_retry_attempts):
@@ -176,6 +220,77 @@ class ArxivClient:
         if last_exc is not None:
             raise last_exc
         raise RuntimeError("Failed to fetch arXiv feed page")
+
+    def _paper_from_abs_html(self, *, arxiv_id: str, html_text: str) -> Paper:
+        title = self._extract_meta_values(html_text, "citation_title")
+        abstract = self._extract_meta_values(html_text, "citation_abstract")
+        authors = self._extract_meta_values(html_text, "citation_author")
+        citation_date = next(iter(self._extract_meta_values(html_text, "citation_date")), "")
+        pdf_url = next(iter(self._extract_meta_values(html_text, "citation_pdf_url")), "")
+        canonical_arxiv_id = self._extract_versioned_id_from_abs_html(html_text) or arxiv_id
+
+        published_at = self._parse_citation_date(citation_date) if citation_date else datetime.now()
+        primary_category = self._extract_primary_category_from_abs_html(html_text)
+        categories = [primary_category] if primary_category else []
+
+        return Paper(
+            arxiv_id=canonical_arxiv_id,
+            title=title[0] if title else "",
+            summary=abstract[0] if abstract else "",
+            authors=authors,
+            categories=categories,
+            published_at=published_at,
+            updated_at=published_at,
+            abs_url=f"https://arxiv.org/abs/{canonical_arxiv_id}",
+            pdf_url=pdf_url or f"https://arxiv.org/pdf/{canonical_arxiv_id}.pdf",
+            source_url=f"https://arxiv.org/e-print/{canonical_arxiv_id}",
+            primary_category=primary_category,
+            license_url=self._extract_license_from_abs_html(html_text),
+        )
+
+    def _extract_meta_values(self, html_text: str, name: str) -> list[str]:
+        values: list[str] = []
+        name_lc = name.lower()
+        for match in META_TAG_PATTERN.finditer(html_text):
+            if match.group("name").lower() != name_lc:
+                continue
+            values.append(_normalize_ws(html.unescape(match.group("content"))))
+        return [value for value in values if value]
+
+    def _extract_primary_category_from_abs_html(self, html_text: str) -> str:
+        match = PRIMARY_SUBJECT_CODE_PATTERN.search(html_text)
+        if not match:
+            return ""
+        return _normalize_ws(html.unescape(match.group("code")))
+
+    def _extract_versioned_id_from_abs_html(self, html_text: str) -> str:
+        for match in PROPERTY_META_TAG_PATTERN.finditer(html_text):
+            if match.group("name").lower() != "og:url":
+                continue
+            url = html.unescape(match.group("content")).strip()
+            versioned_match = VERSIONED_ABS_URL_PATTERN.search(url)
+            if versioned_match:
+                return versioned_match.group("id")
+        return ""
+
+    def _parse_citation_date(self, date_text: str) -> datetime:
+        for fmt in ("%Y/%m/%d", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(date_text, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"Invalid citation date: {date_text}")
+
+    def _is_rate_limit_error(self, exc: Exception) -> bool:
+        if isinstance(exc, RuntimeError) and "rate limit" in str(exc).lower():
+            return True
+        if isinstance(exc, requests.HTTPError) and exc.response is not None:
+            if exc.response.status_code == 429:
+                return True
+            body = exc.response.text.strip().lower()
+            return body.startswith("rate exceeded")
+        text = str(exc).lower()
+        return "rate exceeded" in text or "429" in text
 
     def parse_atom_feed(self, xml_text: str) -> FeedPage:
         root = ET.fromstring(xml_text)
