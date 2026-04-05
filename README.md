@@ -2,7 +2,7 @@
 
 This project ingests recent papers announced on arXiv's math page, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260329.sqlite](data/conjectures_month_live_20260329.sqlite), contains 1046 (likely open) conjectures from 7560 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between January 29, 2026 and March 26, 2026.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260405.sqlite](data/conjectures_month_live_20260405.sqlite), contains 1267 (likely open) conjectures from 8841 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between January 29, 2026 and April 2, 2026.
 
 For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlements of the conjecture that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). 
 
@@ -137,16 +137,16 @@ conjectures-arxiv publish-hf \
 
 ## Current Snapshot
 
-Latest labeled datasets can be found in `data/exports_month_live_20260329/*`
+Latest labeled datasets can be found in `data/exports_month_live_20260405/*`
 
 Current totals:
 
-- `papers_seen=7560`
-- `conjecture_candidates=1247`
-- `real_open_conjecture=1046`
-- `not_real_conjecture=198`
-- `uncertain=3`
-- `published_at_focus_range=2026-01-29..2026-03-26`
+- `papers_seen=8841`
+- `conjecture_candidates=1501`
+- `real_open_conjecture=1267`
+- `not_real_conjecture=230`
+- `uncertain=4`
+- `published_at_focus_range=2026-01-29..2026-04-02`
 - `published_at_outlier_paper_count=21`
 
 ## Current Solver Pilot
