@@ -1202,14 +1202,26 @@ class Database:
                 "scores from the pipeline.\n\n"
                 f"![Score distributions by arXiv category](./{card_image_path.as_posix()})\n\n"
             )
-        return (
+        yaml_header = (
             "---\n"
             "license: other\n"
             "pretty_name: OpenConjecture, a living dataset of mathematics conjectures from the ArXiv\n"
             "tags:\n"
             "- mathematics\n"
             "- arxiv\n"
+            "configs:\n"
+            "- config_name: conjectures\n"
+            "  default: true\n"
+            "  data_files:\n"
+            "  - split: train\n"
+            "    path: data/conjectures.jsonl\n"
+            "- config_name: papers\n"
+            "  data_files:\n"
+            "  - split: train\n"
+            "    path: data/papers.jsonl\n"
             "---\n\n"
+        )
+        return yaml_header + (
             "# OpenConjecture, a living dataset of mathematics conjectures from the ArXiv\n\n"
             "OpenConjecture is a living dataset of mathematics conjectures extracted from recent arXiv "
             "papers. The pipeline in "
