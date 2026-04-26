@@ -2,9 +2,12 @@
 
 This project ingests recent papers announced on arXiv's math page, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-A blog introducing the dataset can be [found here](https://davisrbrown.com/blog/openconjecture.html).
+- Our blog introducing the dataset can be [found here](https://davisrbrown.com/blog/openconjecture.html).
 
-We also keep the HuggingFace dataset up to date, which can be [found here](https://huggingface.co/datasets/davisrbr/openconjecture).
+- We also keep the HuggingFace dataset up to date, which can be [found here](https://huggingface.co/datasets/davisrbr/openconjecture).
+
+
+## Summary
 
 The current live labeled snapshot in this repo, [data/conjectures_month_live_20260426.sqlite](data/conjectures_month_live_20260426.sqlite), contains 1715 (likely open) conjectures from 12594 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between December 30, 2025 and April 23, 2026.
 
