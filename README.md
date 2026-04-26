@@ -4,6 +4,8 @@ This project ingests recent papers announced on arXiv's math page, pulls out ope
 
 A blog introducing the dataset can be [found here](https://davisrbrown.com/blog/openconjecture.html).
 
+We also keep the HuggingFace dataset up to date, which can be [found here](https://huggingface.co/datasets/davisrbr/openconjecture).
+
 The current live labeled snapshot in this repo, [data/conjectures_month_live_20260426.sqlite](data/conjectures_month_live_20260426.sqlite), contains 1715 (likely open) conjectures from 12594 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between December 30, 2025 and April 23, 2026.
 
 For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlements of the conjecture that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). 
