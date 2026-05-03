@@ -92,6 +92,20 @@ class _FakeSession:
         raise AssertionError(f"Unexpected URL: {url}")
 
 
+class _TimeoutRecordingSession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls: list[tuple[str, dict | None, int]] = []
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        self.calls.append((url, params, timeout))
+        if "api/query" in url:
+            return _FakeResponse(SAMPLE_FEED_NO_LICENSE)
+        if "/abs/" in url:
+            return _FakeResponse(SAMPLE_ABS_HTML)
+        raise AssertionError(f"Unexpected URL: {url}")
+
+
 class _RetrySession:
     def __init__(self) -> None:
         self.headers = {}
@@ -258,7 +272,22 @@ def test_iter_math_papers_retries_rate_limit_body() -> None:
     papers = list(client.iter_math_papers(date(2026, 3, 1), date(2026, 3, 3), max_results=1))
 
     assert len(papers) == 1
-    assert session.calls == 2
+
+
+def test_iter_math_papers_uses_shorter_license_timeout() -> None:
+    session = _TimeoutRecordingSession()
+    client = ArxivClient(
+        session=session,
+        page_size=1,
+        request_timeout=120,
+        license_request_timeout=7,
+    )
+
+    papers = list(client.iter_math_papers(date(2026, 3, 1), date(2026, 3, 3), max_results=1))
+
+    assert len(papers) == 1
+    assert any("/abs/2603.00001v1" in url and timeout == 7 for url, _, timeout in session.calls)
+    assert len(session.calls) == 2
 
 
 def test_iter_math_papers_uses_recent_announcement_ids(monkeypatch) -> None:
