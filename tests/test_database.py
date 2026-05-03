@@ -334,6 +334,12 @@ def test_export_huggingface_dataset_redacts_restricted_text(tmp_path) -> None:
     assert "nonexclusive-distrib" in readme_text
     assert "OpenConjecture, a living dataset of mathematics conjectures from the ArXiv" in readme_text
     assert "OpenConjecture is currently composed of **1** open conjectures." in readme_text
+    assert "configs:" in readme_text
+    assert "- config_name: conjectures" in readme_text
+    assert "default: true" in readme_text
+    assert "path: data/conjectures.jsonl" in readme_text
+    assert "- config_name: papers" in readme_text
+    assert "path: data/papers.jsonl" in readme_text
 
 
 def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) -> None:
@@ -386,6 +392,10 @@ def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) 
     assert "OpenConjecture is currently composed of **1** open conjectures." in readme_text
     assert "This snapshot currently contains 1 extracted candidate conjecture records from 1 papers announced on arXiv's math page" in readme_text
     assert "## This release includes" in readme_text
+    assert "- config_name: conjectures" in readme_text
+    assert "path: data/conjectures.jsonl" in readme_text
+    assert "- config_name: papers" in readme_text
+    assert "path: data/papers.jsonl" in readme_text
 
 
 def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:
