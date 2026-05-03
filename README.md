@@ -2,14 +2,11 @@
 
 This project ingests recent papers announced on arXiv's math page, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260503.sqlite](data/conjectures_month_live_20260503.sqlite), contains 1883 (likely open) conjectures from 13883 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between December 30, 2025 and April 30, 2026.
+
 - Our blog introducing the dataset can be [found here](https://davisrbrown.com/blog/openconjecture.html).
 
 - We also keep the HuggingFace dataset up to date, which can be [found here](https://huggingface.co/datasets/davisrbr/openconjecture).
-
-
-## Summary
-
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260426.sqlite](data/conjectures_month_live_20260426.sqlite), contains 1715 (likely open) conjectures from 12594 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between December 30, 2025 and April 23, 2026.
 
 For an initial pilot, we ran GPT-5.4 Thinking (xhigh) to attempt solutions on 20 of the collected conjectures. **Of these 20, the model produced 6 settlements of the conjecture that might hold up: 2 confirmations of open conjectures and 4 disconfirmations**. The rest currently break down into 3 mathematically useful partial results, 1 qualified confirmation, 1 draft question resolved in substance by its own paper, 2 specification/formalization issues, and 7 unresolved outcomes. Attempts for each conjecture can be found in [solver_attempts_20_summary.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_summary.md), and a higher-level audit of the results in [solver_attempts_20_audit.md](data/exports_solver_status_20260309_attempts20/solver_attempts_20_audit.md). 
 
@@ -144,17 +141,17 @@ conjectures-arxiv publish-hf \
 
 ## Current Snapshot
 
-Latest labeled datasets can be found in `data/exports_month_live_20260426/*`
+Latest labeled datasets can be found in `data/exports_month_live_20260503/*`
 
 Current totals:
 
-- `papers_seen=12594`
-- `conjecture_candidates=2082`
-- `real_open_conjecture=1715`
-- `not_real_conjecture=358`
-- `uncertain=9`
-- `published_at_focus_range=2025-12-30..2026-04-23`
-- `published_at_outlier_paper_count=79`
+- `papers_seen=13883`
+- `conjecture_candidates=2288`
+- `real_open_conjecture=1883`
+- `not_real_conjecture=394`
+- `uncertain=11`
+- `published_at_focus_range=2025-12-30..2026-04-30`
+- `published_at_outlier_paper_count=97`
 
 ## Current Solver Pilot
 

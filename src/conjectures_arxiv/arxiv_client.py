@@ -62,12 +62,16 @@ class ArxivClient:
         session: requests.Session | None = None,
         page_size: int = 100,
         request_timeout: int = 120,
+        abs_page_timeout: int = 30,
+        license_request_timeout: int = 10,
         page_retry_attempts: int = 5,
         retry_sleep_seconds: float = 5.0,
     ) -> None:
         self.session = session or requests.Session()
         self.page_size = page_size
         self.request_timeout = request_timeout
+        self.abs_page_timeout = abs_page_timeout
+        self.license_request_timeout = license_request_timeout
         self.page_retry_attempts = max(1, page_retry_attempts)
         self.retry_sleep_seconds = max(0.0, retry_sleep_seconds)
         self.session.headers.setdefault("User-Agent", "conjectures-arxiv/0.1.0")
@@ -190,7 +194,7 @@ class ArxivClient:
     def _iter_papers_by_abs_pages(self, arxiv_ids: list[str]):
         for arxiv_id in arxiv_ids:
             abs_url = f"https://arxiv.org/abs/{arxiv_id}"
-            response = self.session.get(abs_url, timeout=self.request_timeout)
+            response = self.session.get(abs_url, timeout=self.abs_page_timeout)
             response.raise_for_status()
             paper = self._paper_from_abs_html(arxiv_id=arxiv_id, html_text=response.text)
             if not paper.license_url:
@@ -367,7 +371,7 @@ class ArxivClient:
 
     def _fetch_license_from_abs(self, *, abs_url: str) -> str:
         try:
-            response = self.session.get(abs_url, timeout=self.request_timeout)
+            response = self.session.get(abs_url, timeout=self.license_request_timeout)
             response.raise_for_status()
         except requests.RequestException:
             return ""
