@@ -66,6 +66,30 @@ SAMPLE_ABS_HTML = """
 </html>
 """
 
+SAMPLE_ABS_HTML_WITH_SUBJECTS = """
+<html>
+  <head>
+    <meta property="og:url" content="https://arxiv.org/abs/2605.06668v1" />
+    <meta name="citation_title" content="Rational homology disk degenerations of elliptic surfaces" />
+    <meta name="citation_abstract" content="Abstract text" />
+    <meta name="citation_author" content="Example Author" />
+    <meta name="citation_date" content="2026-05-07" />
+    <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2605.06668v1.pdf" />
+  </head>
+  <body>
+    <div class="metatable">
+      <table summary="Additional metadata"><tr>
+          <td class="tablecell label">Subjects:</td>
+          <td class="tablecell subjects">
+            <span class="primary-subject">Algebraic Geometry (math.AG)</span>; General Topology (math.GN); Symplectic Geometry (math.SG)</td>
+        </tr>
+      </table>
+    </div>
+    <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">License</a>
+  </body>
+</html>
+"""
+
 
 class _FakeResponse:
     def __init__(self, text: str) -> None:
@@ -243,6 +267,15 @@ def test_iter_math_papers_falls_back_to_abs_license() -> None:
     assert paper.license_url == "https://creativecommons.org/licenses/by/4.0/"
     assert any("/abs/2603.00001v1" in call[0] for call in session.calls)
     assert paper.arxiv_id == "2603.00001v1"
+
+
+def test_paper_from_abs_html_extracts_all_subject_categories() -> None:
+    client = ArxivClient()
+
+    paper = client._paper_from_abs_html(arxiv_id="2605.06668", html_text=SAMPLE_ABS_HTML_WITH_SUBJECTS)
+
+    assert paper.primary_category == "math.AG"
+    assert paper.categories == ["math.AG", "math.GN", "math.SG"]
 
 
 def test_iter_math_papers_passes_start_offset() -> None:

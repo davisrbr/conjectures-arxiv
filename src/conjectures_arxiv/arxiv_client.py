@@ -33,6 +33,15 @@ PRIMARY_SUBJECT_CODE_PATTERN = re.compile(
     r"""<span[^>]*class\s*=\s*["'][^"']*\bprimary-subject\b[^"']*["'][^>]*>.*?</span>\s*</td>\s*<td[^>]*>\((?P<code>[^)]+)\)""",
     flags=re.IGNORECASE | re.DOTALL,
 )
+SUBJECTS_CELL_PATTERN = re.compile(
+    r"""<td[^>]*class\s*=\s*["'][^"']*\bsubjects\b[^"']*["'][^>]*>(?P<content>.*?)</td>""",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+PRIMARY_SUBJECT_SPAN_PATTERN = re.compile(
+    r"""<span[^>]*class\s*=\s*["'][^"']*\bprimary-subject\b[^"']*["'][^>]*>(?P<content>.*?)</span>""",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+CATEGORY_CODE_PATTERN = re.compile(r"""\(([a-z0-9.\-]+)\)""", flags=re.IGNORECASE)
 VERSIONED_ABS_URL_PATTERN = re.compile(r"""https?://arxiv\.org/abs/(?P<id>\d{4}\.\d{5}v\d+)""", flags=re.IGNORECASE)
 LICENSE_REL_PATTERN = re.compile(
     r"""<a[^>]*\brel\s*=\s*["'][^"']*\blicense\b[^"']*["'][^>]*\bhref\s*=\s*["'](?P<href>[^"']+)["']""",
@@ -234,8 +243,7 @@ class ArxivClient:
         canonical_arxiv_id = self._extract_versioned_id_from_abs_html(html_text) or arxiv_id
 
         published_at = self._parse_citation_date(citation_date) if citation_date else datetime.now()
-        primary_category = self._extract_primary_category_from_abs_html(html_text)
-        categories = [primary_category] if primary_category else []
+        primary_category, categories = self._extract_subjects_from_abs_html(html_text)
 
         return Paper(
             arxiv_id=canonical_arxiv_id,
@@ -262,10 +270,40 @@ class ArxivClient:
         return [value for value in values if value]
 
     def _extract_primary_category_from_abs_html(self, html_text: str) -> str:
+        primary_category, _ = self._extract_subjects_from_abs_html(html_text)
+        return primary_category
+
+    def _extract_subjects_from_abs_html(self, html_text: str) -> tuple[str, list[str]]:
+        subjects_match = SUBJECTS_CELL_PATTERN.search(html_text)
+        if subjects_match is not None:
+            subjects_html = subjects_match.group("content")
+            primary_match = PRIMARY_SUBJECT_SPAN_PATTERN.search(subjects_html)
+            primary_content = ""
+            if primary_match is not None:
+                primary_content = _strip_html_tags(primary_match.group("content"))
+
+            category_matches = CATEGORY_CODE_PATTERN.findall(subjects_html)
+            categories = list(dict.fromkeys(_normalize_ws(code) for code in category_matches if code))
+
+            primary_category = self._extract_category_code_from_subject_text(primary_content)
+            if not primary_category and categories:
+                primary_category = categories[0]
+            if primary_category and primary_category not in categories:
+                categories.insert(0, primary_category)
+            if primary_category or categories:
+                return primary_category, categories
+
         match = PRIMARY_SUBJECT_CODE_PATTERN.search(html_text)
         if not match:
+            return "", []
+        code = _normalize_ws(html.unescape(match.group("code")))
+        return code, [code] if code else []
+
+    def _extract_category_code_from_subject_text(self, text: str) -> str:
+        match = CATEGORY_CODE_PATTERN.search(text)
+        if match is None:
             return ""
-        return _normalize_ws(html.unescape(match.group("code")))
+        return _normalize_ws(match.group(1))
 
     def _extract_versioned_id_from_abs_html(self, html_text: str) -> str:
         for match in PROPERTY_META_TAG_PATTERN.finditer(html_text):
@@ -390,6 +428,10 @@ class ArxivClient:
 
 def _normalize_ws(text: str) -> str:
     return " ".join(text.split())
+
+
+def _strip_html_tags(text: str) -> str:
+    return _normalize_ws(html.unescape(re.sub(r"<[^>]+>", " ", text)))
 
 
 def _parse_timestamp(value: str) -> datetime:
