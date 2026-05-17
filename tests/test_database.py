@@ -398,6 +398,81 @@ def test_export_huggingface_dataset_card_includes_repo_link_and_image(tmp_path) 
     assert "path: data/papers.jsonl" in readme_text
 
 
+def test_export_huggingface_dataset_preserves_manual_card_text(tmp_path) -> None:
+    db = Database(tmp_path / "conjectures.sqlite")
+    db.init_schema()
+    paper = _sample_paper()
+    db.upsert_paper(paper)
+    db.insert_conjectures(paper.arxiv_id, [_sample_conjecture()])
+    conjecture_id = db.list_conjectures_for_llm(model="gpt-5-mini")[0]["conjecture_id"]
+    db.upsert_llm_label(
+        conjecture_id=int(conjecture_id),
+        model="gpt-5-mini",
+        label="real_open_conjecture",
+        confidence=0.82,
+        interestingness_score=0.65,
+        interestingness_confidence=0.62,
+        interestingness_rationale="Interesting.",
+        viability_score=0.41,
+        viability_confidence=0.4,
+        viability_rationale="Viable.",
+        assessment_version="test-v1",
+        rationale="Rationale.",
+        evidence_snippet="Snippet.",
+        raw_response_json='{"label":"real_open_conjecture"}',
+    )
+
+    plot_dir = tmp_path / "plots_real_conjectures_20260316"
+    plot_dir.mkdir()
+    plot_path = plot_dir / "real_conjectures_category_kde_scores.png"
+    plot_path.write_bytes(b"png")
+
+    existing_readme = """---
+license: other
+pretty_name: OpenConjecture, a living dataset of mathematics conjectures from the ArXiv
+---
+
+# OpenConjecture, a living dataset of mathematics conjectures from the ArXiv
+
+Custom intro paragraph that should survive.
+
+OpenConjecture is currently composed of **999** open conjectures.
+
+This snapshot currently contains 999 extracted candidate conjecture records from 999 papers announced on arXiv's math page, with papers currently published between 1900-01-01 and 1900-01-02. GPT-5 Mini labeled 1 records as `not_real_conjecture` and 2 as `uncertain`. Under the current publication policy (`hf-publication-v1`), 3 conjectures are published with text and 4 are included as metadata-only records because their licensing is more restrictive.
+
+Keep this custom note exactly.
+
+## LLM-labeled conjectures, per field
+
+Old plot description that should be replaced.
+
+![Old plot](./assets/old_plot.png)
+
+## Publication Policy
+
+Publication section should survive too.
+"""
+
+    exported = db.export_huggingface_dataset(
+        tmp_path / "hf_dataset_20260316",
+        repo_id="alice/conjectures-arxiv",
+        existing_readme_text=existing_readme,
+    )
+    db.close()
+
+    readme_text = exported["hf_readme"].read_text(encoding="utf-8")
+    assert "Custom intro paragraph that should survive." in readme_text
+    assert "Keep this custom note exactly." in readme_text
+    assert "Publication section should survive too." in readme_text
+    assert "OpenConjecture is currently composed of **1** open conjectures." in readme_text
+    assert "OpenConjecture is currently composed of **999** open conjectures." not in readme_text
+    assert "This snapshot currently contains 1 extracted candidate conjecture records from 1 papers announced on arXiv's math page" in readme_text
+    assert "hf-publication-v1" not in readme_text
+    assert "their licensing is more restrictive." in readme_text
+    assert "Old plot description that should be replaced." not in readme_text
+    assert "./assets/real_conjectures_category_kde_scores.png" in readme_text
+
+
 def test_solver_attempt_roundtrip_and_candidate_listing(tmp_path) -> None:
     db = Database(tmp_path / "conjectures.sqlite")
     db.init_schema()

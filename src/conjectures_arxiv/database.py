@@ -382,6 +382,7 @@ class Database:
         output_dir: str | Path,
         *,
         repo_id: str = "",
+        existing_readme_text: str | None = None,
     ) -> dict[str, Path]:
         out_dir = Path(output_dir)
         data_dir = out_dir / "data"
@@ -406,11 +407,15 @@ class Database:
         self._write_jsonl(papers_jsonl, public_papers)
         self._write_csv(papers_csv, public_papers)
         self._write_json(manifest_json, manifest)
+        generated_readme = self._build_huggingface_readme(
+            manifest,
+            repo_id=repo_id,
+            card_image_path=card_image_path,
+        )
         readme_path.write_text(
-            self._build_huggingface_readme(
-                manifest,
-                repo_id=repo_id,
-                card_image_path=card_image_path,
+            self._merge_huggingface_readme(
+                generated_readme=generated_readme,
+                existing_readme_text=existing_readme_text,
             ),
             encoding="utf-8",
         )
@@ -1191,7 +1196,7 @@ class Database:
             f"(`{manifest['publication_policy_version']}`), "
             f"{manifest['conjectures_with_public_text']} conjectures are published with text and "
             f"{manifest['conjectures_withheld_text']} are included as metadata-only records because "
-            "their source-license posture is more restrictive."
+            "their licensing is more restrictive."
         )
         card_image_section = ""
         if card_image_path is not None:
@@ -1257,6 +1262,63 @@ class Database:
             "- `data/papers.csv`: CSV version of the paper table\n"
             "- `data/publication_manifest.json`: aggregate counts for the publication decision pipeline\n"
         )
+
+    @staticmethod
+    def _merge_huggingface_readme(*, generated_readme: str, existing_readme_text: str | None) -> str:
+        if not existing_readme_text:
+            return generated_readme
+
+        merged = existing_readme_text
+        replacements = [
+            (
+                r"OpenConjecture is currently composed of .*? open conjectures\.",
+                Database._extract_required_section(
+                    generated_readme,
+                    r"OpenConjecture is currently composed of .*? open conjectures\.",
+                ),
+                True,
+            ),
+            (
+                r"This snapshot currently contains .*? more restrictive\.",
+                Database._extract_required_section(
+                    generated_readme,
+                    r"This snapshot currently contains .*? more restrictive\.",
+                    flags=re.DOTALL,
+                ),
+                True,
+            ),
+            (
+                r"## LLM-labeled conjectures, per field\s+.*?(?=\n## |\Z)",
+                Database._extract_optional_section(
+                    generated_readme,
+                    r"## LLM-labeled conjectures, per field\s+.*?(?=\n## |\Z)",
+                    flags=re.DOTALL,
+                ),
+                False,
+            ),
+        ]
+
+        for pattern, replacement, required in replacements:
+            if replacement is None:
+                continue
+            merged, count = re.subn(pattern, replacement, merged, count=1, flags=re.DOTALL)
+            if count == 0 and required:
+                return generated_readme
+        return merged
+
+    @staticmethod
+    def _extract_required_section(text: str, pattern: str, *, flags: int = 0) -> str:
+        match = re.search(pattern, text, flags=flags)
+        if match is None:
+            raise ValueError(f"Required section missing for pattern: {pattern}")
+        return match.group(0)
+
+    @staticmethod
+    def _extract_optional_section(text: str, pattern: str, *, flags: int = 0) -> str | None:
+        match = re.search(pattern, text, flags=flags)
+        if match is None:
+            return None
+        return match.group(0)
 
     def _maybe_copy_hf_card_image(self, *, out_dir: Path) -> Path | None:
         for candidate in self._hf_card_image_candidates(out_dir=out_dir):
