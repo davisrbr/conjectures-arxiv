@@ -43,6 +43,34 @@ class HuggingFacePublisher:
         )
         return f"https://huggingface.co/datasets/{repo_id}"
 
+    def download_dataset_card(
+        self,
+        *,
+        repo_id: str,
+        revision: str = "main",
+    ) -> str | None:
+        try:
+            from huggingface_hub import hf_hub_download
+            from huggingface_hub.errors import EntryNotFoundError, RepositoryNotFoundError, RevisionNotFoundError
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "huggingface_hub is required for Hugging Face dataset-card downloads. "
+                "Install it with `pip install -e '.[huggingface]'`."
+            ) from exc
+
+        try:
+            readme_path = hf_hub_download(
+                repo_id=repo_id,
+                repo_type="dataset",
+                filename="README.md",
+                revision=revision,
+                token=self.token,
+            )
+        except (EntryNotFoundError, RepositoryNotFoundError, RevisionNotFoundError):
+            return None
+
+        return Path(readme_path).read_text(encoding="utf-8")
+
     def _build_api(self):  # noqa: ANN202
         try:
             from huggingface_hub import HfApi

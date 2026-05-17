@@ -289,7 +289,11 @@ def cmd_export_hf(args: argparse.Namespace) -> int:
     db = Database(args.db_path)
     try:
         db.init_schema()
-        exported = db.export_huggingface_dataset(args.output_dir, repo_id=args.repo_id)
+        exported = db.export_huggingface_dataset(
+            args.output_dir,
+            repo_id=args.repo_id,
+            existing_readme_text=_load_existing_hf_readme(repo_id=args.repo_id),
+        )
     finally:
         db.close()
 
@@ -309,10 +313,19 @@ def cmd_upload_s3(args: argparse.Namespace) -> int:
 
 
 def cmd_publish_hf(args: argparse.Namespace) -> int:
+    existing_readme_text = _load_existing_hf_readme(
+        repo_id=args.repo_id,
+        token=args.token or None,
+        revision=args.revision,
+    )
     db = Database(args.db_path)
     try:
         db.init_schema()
-        exported = db.export_huggingface_dataset(args.output_dir, repo_id=args.repo_id)
+        exported = db.export_huggingface_dataset(
+            args.output_dir,
+            repo_id=args.repo_id,
+            existing_readme_text=existing_readme_text,
+        )
     finally:
         db.close()
 
@@ -347,6 +360,27 @@ def _print_hf_export_summary(exported: dict[str, Path]) -> None:
     print("Prepared artifacts:")
     for artifact in exported.values():
         print(f"  - {artifact}")
+
+
+def _load_existing_hf_readme(
+    *,
+    repo_id: str,
+    token: str | None = None,
+    revision: str = "main",
+) -> str | None:
+    if not repo_id:
+        return None
+
+    try:
+        publisher = HuggingFacePublisher(token=token)
+        return publisher.download_dataset_card(repo_id=repo_id, revision=revision)
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning(
+            "Failed fetching existing Hugging Face dataset card for %s: %s",
+            repo_id,
+            exc,
+        )
+        return None
 
 
 def cmd_filter_llm(args: argparse.Namespace) -> int:
