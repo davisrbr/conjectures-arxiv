@@ -5,6 +5,7 @@ from collections import Counter
 import math
 from pathlib import Path
 import sqlite3
+import shutil
 import subprocess
 import tempfile
 from typing import Iterable
@@ -739,14 +740,34 @@ def write_plot_png(path: Path, content: str) -> None:
         handle.write(content + "\n")
         temp_svg = Path(handle.name)
     try:
-        subprocess.run(
-            ["magick", str(temp_svg), f"PNG24:{path}"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
-        raise RuntimeError("ImageMagick `magick` is required to render PNG plots.") from exc
+        if shutil.which("magick"):
+            subprocess.run(
+                ["magick", str(temp_svg), f"PNG24:{path}"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return
+        if shutil.which("sips"):
+            subprocess.run(
+                ["sips", "-s", "format", "png", str(temp_svg), "--out", str(path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return
+        if shutil.which("qlmanage"):
+            subprocess.run(
+                ["qlmanage", "-t", "-s", str(max(WIDTH, HEIGHT) * PNG_SCALE), "-o", str(path.parent), str(temp_svg)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            thumbnail = path.parent / f"{temp_svg.name}.png"
+            if thumbnail.exists():
+                thumbnail.replace(path)
+                return
+        raise RuntimeError("A PNG renderer is required to render plots. Install ImageMagick `magick` or use macOS `sips`.")
     finally:
         temp_svg.unlink(missing_ok=True)
 
