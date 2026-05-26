@@ -1170,9 +1170,8 @@ class Database:
         if focus_start and focus_end:
             if outlier_count > 0:
                 published_range = (
-                    f"most papers currently published between {focus_start} and {focus_end}, "
-                    f"plus {outlier_count} newly announced cross-listed papers whose original "
-                    "arXiv publication dates are older"
+                    f"most recently ingested papers currently published between {focus_start} and {focus_end}, "
+                    f"alongside {outlier_count} older papers retained from earlier snapshots"
                 )
             else:
                 published_range = f"papers currently published between {focus_start} and {focus_end}"

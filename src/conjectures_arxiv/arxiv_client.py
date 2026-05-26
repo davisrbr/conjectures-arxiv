@@ -13,6 +13,7 @@ from .models import Paper
 
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
+ARXIV_ADVANCED_SEARCH_URL = "https://arxiv.org/search/advanced"
 ARXIV_MATH_PASTWEEK_URL = "https://arxiv.org/list/math/pastweek?show=2000"
 ATOM_NS = {
     "atom": "http://www.w3.org/2005/Atom",
@@ -21,6 +22,10 @@ ATOM_NS = {
 }
 RECENT_SECTION_PATTERN = re.compile(r"<h3>(?P<label>.*?)</h3>(?P<body>.*?)(?=<h3>|</dl>)", flags=re.DOTALL)
 RECENT_ARXIV_ID_PATTERN = re.compile(r"arXiv:(?P<id>\d{4}\.\d{5})(?:v\d+)?")
+SEARCH_ARXIV_ID_PATTERN = re.compile(
+    r"""href=["']https?://arxiv\.org/abs/(?P<id>\d{4}\.\d{5})(?:v\d+)?["']""",
+    flags=re.IGNORECASE,
+)
 META_TAG_PATTERN = re.compile(
     r"""<meta[^>]*\bname\s*=\s*["'](?P<name>[^"']+)["'][^>]*\bcontent\s*=\s*["'](?P<content>[^"']*)["'][^>]*>""",
     flags=re.IGNORECASE,
@@ -117,7 +122,20 @@ class ArxivClient:
                 "start": start,
                 "max_results": self.page_size,
             }
-            response = self._get_feed_page(params=params)
+            try:
+                response = self._get_feed_page(params=params)
+            except Exception as exc:  # noqa: BLE001
+                if not self._is_rate_limit_error(exc):
+                    raise
+                remaining_limit = None if max_results is None else max(max_results - yielded, 0)
+                fallback_ids = self._fetch_advanced_search_math_ids(
+                    from_date=from_date,
+                    to_date=to_date,
+                    start_offset=start,
+                    max_results=remaining_limit,
+                )
+                yield from self._iter_papers_by_abs_pages(fallback_ids)
+                return
 
             page = self.parse_atom_feed(response.text)
             if total_results is None:
@@ -176,6 +194,7 @@ class ArxivClient:
             for arxiv_id in batch:
                 paper = papers_by_id.get(arxiv_id)
                 if paper is None:
+                    yield from self._iter_papers_by_abs_pages([arxiv_id])
                     continue
                 if not paper.license_url:
                     fallback = self._fetch_license_from_abs(abs_url=paper.abs_url)
@@ -213,6 +232,64 @@ class ArxivClient:
             yield paper
             # Keep fallback scraping polite without making weekly ingestion unreasonably slow.
             time.sleep(0.2)
+
+    def _fetch_advanced_search_math_ids(
+        self,
+        *,
+        from_date: date,
+        to_date: date,
+        start_offset: int = 0,
+        max_results: int | None = None,
+    ) -> list[str]:
+        # arXiv advanced search is less reliable with 200-result pages on some
+        # date-range queries; 100 keeps repair pagination stable.
+        page_size = 100
+        start = max(0, start_offset)
+        ids: list[str] = []
+        seen: set[str] = set()
+
+        while True:
+            params = {
+                "advanced": "1",
+                "terms-0-operator": "AND",
+                "terms-0-term": "",
+                "terms-0-field": "all",
+                "classification-mathematics": "y",
+                "classification-include_cross_list": "include",
+                "date-filter_by": "date_range",
+                "date-from_date": from_date.isoformat(),
+                "date-to_date": to_date.isoformat(),
+                "date-date_type": "submitted_date",
+                "abstracts": "hide",
+                "size": str(page_size),
+                "order": "-announced_date_first",
+                "start": str(start),
+            }
+            response = self.session.get(ARXIV_ADVANCED_SEARCH_URL, params=params, timeout=self.request_timeout)
+            response.raise_for_status()
+
+            page_ids = []
+            for match in SEARCH_ARXIV_ID_PATTERN.finditer(response.text):
+                arxiv_id = match.group("id")
+                if arxiv_id in seen:
+                    continue
+                seen.add(arxiv_id)
+                page_ids.append(arxiv_id)
+
+            if not page_ids:
+                break
+
+            for arxiv_id in page_ids:
+                ids.append(arxiv_id)
+                if max_results is not None and len(ids) >= max_results:
+                    return ids
+
+            if len(page_ids) < page_size:
+                break
+            start += page_size
+            time.sleep(0.2)
+
+        return ids
 
     def _get_feed_page(self, *, params: dict[str, object]):
         last_exc: Exception | None = None
