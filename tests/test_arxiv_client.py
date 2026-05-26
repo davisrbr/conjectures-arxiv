@@ -222,6 +222,55 @@ class _PartialRateLimitRecentSession:
         raise AssertionError(f"Unexpected URL: {url} {params}")
 
 
+class _MissingIdListPaperSession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls: list[tuple[str, dict | None]] = []
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        del timeout
+        self.calls.append((url, params))
+        if "list/math/pastweek" in url:
+            return _FakeResponse(SAMPLE_RECENT_LIST)
+        if "api/query" in url:
+            return _FakeResponse(
+                SAMPLE_FEED.replace("2603.00001v1", "2603.15613v1").replace("A Test Math Paper", "Recent Paper One")
+            )
+        if "/abs/2603.15606" in url:
+            return _FakeResponse(
+                SAMPLE_ABS_HTML_WITH_SUBJECTS.replace("2605.06668v1", "2603.15606v2").replace(
+                    "Rational homology disk degenerations of elliptic surfaces", "Recent Paper Two"
+                )
+            )
+        raise AssertionError(f"Unexpected URL: {url} {params}")
+
+
+class _SearchFallbackSession:
+    def __init__(self) -> None:
+        self.headers = {}
+        self.calls: list[tuple[str, dict | None]] = []
+
+    def get(self, url, params=None, timeout=60):  # noqa: ANN001
+        del timeout
+        self.calls.append((url, params))
+        if "api/query" in url:
+            raise requests.HTTPError(response=_HTTPStatusResponse(429, "Rate exceeded."))
+        if "search/advanced" in url:
+            return _FakeResponse(
+                """
+                <html><body>
+                  <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.09001">arXiv:2605.09001</a></p>
+                  <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.09002">arXiv:2605.09002</a></p>
+                </body></html>
+                """
+            )
+        if "/abs/2605.09001" in url:
+            return _FakeResponse(SAMPLE_ABS_HTML_WITH_SUBJECTS.replace("2605.06668v1", "2605.09001v1"))
+        if "/abs/2605.09002" in url:
+            return _FakeResponse(SAMPLE_ABS_HTML_WITH_SUBJECTS.replace("2605.06668v1", "2605.09002v1"))
+        raise AssertionError(f"Unexpected URL: {url} {params}")
+
+
 class _HTTPStatusResponse:
     def __init__(self, status_code: int, text: str) -> None:
         self.status_code = status_code
@@ -367,3 +416,34 @@ def test_iter_math_papers_recent_fallback_resumes_without_replaying(monkeypatch)
     assert [paper.arxiv_id for paper in papers] == ["2603.15613v1", "2603.15606v3"]
     assert sum(1 for url, _ in session.calls if "/abs/2603.15613" in url) == 0
     assert sum(1 for url, _ in session.calls if "/abs/2603.15606" in url) == 1
+
+
+def test_iter_recent_papers_falls_back_for_missing_id_list_entries(monkeypatch) -> None:
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):  # noqa: N805
+            return cls(2026, 3, 17)
+
+    monkeypatch.setattr("conjectures_arxiv.arxiv_client.date", _FakeDate)
+    monkeypatch.setattr("conjectures_arxiv.arxiv_client.time.sleep", lambda _: None)
+    session = _MissingIdListPaperSession()
+    client = ArxivClient(session=session, page_size=10)
+
+    papers = list(client.iter_math_papers(_FakeDate(2026, 3, 17), _FakeDate(2026, 3, 17), max_results=2))
+
+    assert [paper.arxiv_id for paper in papers] == ["2603.15613v1", "2603.15606v2"]
+    assert sum(1 for url, _ in session.calls if "/abs/2603.15606" in url) == 1
+
+
+def test_iter_math_papers_falls_back_to_advanced_search_ids_on_rate_limit(monkeypatch) -> None:
+    monkeypatch.setattr("conjectures_arxiv.arxiv_client.time.sleep", lambda _: None)
+    session = _SearchFallbackSession()
+    client = ArxivClient(session=session, page_size=100, page_retry_attempts=1, retry_sleep_seconds=0)
+
+    papers = list(client.iter_math_papers(date(2026, 5, 8), date(2026, 5, 10), max_results=2))
+
+    assert [paper.arxiv_id for paper in papers] == ["2605.09001v1", "2605.09002v1"]
+    search_calls = [call for call in session.calls if "search/advanced" in call[0]]
+    assert search_calls
+    assert search_calls[0][1]["date-from_date"] == "2026-05-08"
+    assert search_calls[0][1]["date-to_date"] == "2026-05-10"
