@@ -2,7 +2,7 @@
 
 This project ingests recent papers announced on arXiv's math page, pulls out open conjectures, and builds a dataset from them. We use an LLM to label each conjecture by interestingness and tractability, and then use GPT-5.4 Thinking to attempt proofs of the most tractable ones. Early runs have turned up some potential successes.
 
-The current live labeled snapshot in this repo, [data/conjectures_month_live_20260526.sqlite](data/conjectures_month_live_20260526.sqlite), contains 2433 (likely open) conjectures from 18608 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between December 30, 2025 and May 25, 2026.
+The current live labeled snapshot in this repo, [data/conjectures_month_live_20260607.sqlite](data/conjectures_month_live_20260607.sqlite), contains 2723 (likely open) conjectures from 20703 papers in the current arXiv math announcement stream. Most of those papers have `published_at` between December 30, 2025 and June 4, 2026.
 
 - Our blog introducing the dataset can be [found here](https://davisrbrown.com/blog/openconjecture.html).
 
@@ -141,17 +141,17 @@ conjectures-arxiv publish-hf \
 
 ## Current Snapshot
 
-Latest labeled datasets can be found in `data/exports_month_live_20260526/*`
+Latest labeled datasets can be found in `data/exports_month_live_20260607/*`
 
 Current totals:
 
-- `papers_seen=18608`
-- `conjecture_candidates=2977`
-- `real_open_conjecture=2433`
-- `not_real_conjecture=531`
-- `uncertain=13`
-- `published_at_focus_range=2025-12-30..2026-05-25`
-- `published_at_outlier_paper_count=132`
+- `papers_seen=20703`
+- `conjecture_candidates=3321`
+- `real_open_conjecture=2723`
+- `not_real_conjecture=583`
+- `uncertain=15`
+- `published_at_focus_range=2025-12-30..2026-06-04`
+- `published_at_outlier_paper_count=151`
 
 ## Current Solver Pilot
 
