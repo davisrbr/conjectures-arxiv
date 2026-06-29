@@ -311,8 +311,10 @@ def test_export_huggingface_dataset_redacts_restricted_text(tmp_path) -> None:
     assert conjecture_record["latest_interestingness_score"] == 0.88
     assert conjecture_record["latest_viability_score"] == 0.73
     assert conjecture_record["latest_assessment_version"] == "test-v2"
-    assert conjecture_record["latest_label_rationale"] == "Latest rationale."
-    assert conjecture_record["latest_evidence_snippet"] == "Latest snippet."
+    assert conjecture_record["latest_interestingness_rationale"] == ""
+    assert conjecture_record["latest_viability_rationale"] == ""
+    assert conjecture_record["latest_label_rationale"] == ""
+    assert conjecture_record["latest_evidence_snippet"] == ""
     assert conjecture_record["latest_labeled_at"]
 
     paper_line = exported["hf_papers_jsonl"].read_text(encoding="utf-8").strip()
