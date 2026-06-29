@@ -1058,6 +1058,10 @@ class Database:
             if public_record["text_withheld"]:
                 public_record["body_tex"] = ""
                 public_record["plain_text"] = ""
+                public_record["latest_interestingness_rationale"] = ""
+                public_record["latest_viability_rationale"] = ""
+                public_record["latest_label_rationale"] = ""
+                public_record["latest_evidence_snippet"] = ""
             records.append(public_record)
         return records
 
