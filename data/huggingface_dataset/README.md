@@ -20,9 +20,9 @@ configs:
 
 OpenConjecture is a living dataset of mathematics conjectures extracted from recent arXiv papers. The pipeline in [`conjectures-arxiv`](https://github.com/davisrbr/conjectures-arxiv) ingests recent papers announced on arXiv's math page, extracts conjecture-like blocks from source LaTeX, labels each candidate with GPT-5 Mini, and scores real/open conjectures for interestingness and near-term viability.
 
-OpenConjecture is currently composed of **3192** open conjectures.
+OpenConjecture is currently composed of **3335** open conjectures.
 
-This snapshot currently contains 3945 extracted candidate conjecture records from 24178 papers announced on arXiv's math page, with most recently ingested papers currently published between 2025-12-30 and 2026-06-26, alongside 144 older papers retained from earlier snapshots. GPT-5 Mini labeled 729 records as `not_real_conjecture` and 24 as `uncertain`. Under the current publication policy (`hf-publication-v2`), 1872 conjectures are published with text and 2073 are included as metadata-only records because their licensing is more restrictive.
+This snapshot currently contains 4147 extracted candidate conjecture records from 25395 papers announced on arXiv's math page, with most recently ingested papers currently published between 2025-12-30 and 2026-07-02, alongside 144 older papers retained from earlier snapshots. GPT-5 Mini labeled 786 records as `not_real_conjecture` and 26 as `uncertain`. Under the current publication policy (`hf-publication-v2`), 1966 conjectures are published with text and 2181 are included as metadata-only records because their licensing is more restrictive.
 
 The GitHub repository includes the full pipeline, scripts, plots, and solver artifacts for this release.
 
