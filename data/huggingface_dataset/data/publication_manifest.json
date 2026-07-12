@@ -1,46 +1,46 @@
 {
   "conjectures_by_decision": {
-    "publish_text": 1966,
-    "withhold_text": 2181
+    "publish_text": 2092,
+    "withhold_text": 2323
   },
   "conjectures_by_license_family": {
-    "arxiv_nonexclusive_distrib": 2181,
-    "cc_by": 1546,
-    "cc_by_nc_nd": 186,
-    "cc_by_nc_sa": 139,
-    "cc_by_sa": 35,
-    "missing": 60
+    "arxiv_nonexclusive_distrib": 2323,
+    "cc_by": 1632,
+    "cc_by_nc_nd": 204,
+    "cc_by_nc_sa": 145,
+    "cc_by_sa": 38,
+    "missing": 73
   },
   "conjectures_by_license_url": {
-    "(missing)": 60,
-    "https://arxiv.org/licenses/nonexclusive-distrib/1.0/": 2181,
-    "https://creativecommons.org/licenses/by-nc-nd/4.0/": 186,
-    "https://creativecommons.org/licenses/by-nc-sa/4.0/": 139,
-    "https://creativecommons.org/licenses/by-sa/4.0/": 35,
-    "https://creativecommons.org/licenses/by/4.0/": 1546
+    "(missing)": 73,
+    "https://arxiv.org/licenses/nonexclusive-distrib/1.0/": 2323,
+    "https://creativecommons.org/licenses/by-nc-nd/4.0/": 204,
+    "https://creativecommons.org/licenses/by-nc-sa/4.0/": 145,
+    "https://creativecommons.org/licenses/by-sa/4.0/": 38,
+    "https://creativecommons.org/licenses/by/4.0/": 1632
   },
   "conjectures_by_reason": {
-    "arxiv_nonexclusive_distribution_license": 2181,
-    "creativecommons_license_treated_as_publishable": 1581,
-    "creativecommons_noncommercial_license_allowed_for_noncommercial_release": 325,
-    "missing_license_treated_as_publishable": 60
+    "arxiv_nonexclusive_distribution_license": 2323,
+    "creativecommons_license_treated_as_publishable": 1670,
+    "creativecommons_noncommercial_license_allowed_for_noncommercial_release": 349,
+    "missing_license_treated_as_publishable": 73
   },
-  "conjectures_total": 4147,
-  "conjectures_with_latest_label": 4147,
-  "conjectures_with_public_text": 1966,
-  "conjectures_withheld_text": 2181,
-  "generated_at": "2026-07-05T15:31:57Z",
+  "conjectures_total": 4415,
+  "conjectures_with_latest_label": 4415,
+  "conjectures_with_public_text": 2092,
+  "conjectures_withheld_text": 2323,
+  "generated_at": "2026-07-12T16:27:31Z",
   "latest_labels_by_class": {
-    "not_real_conjecture": 786,
-    "real_open_conjecture": 3335,
+    "not_real_conjecture": 858,
+    "real_open_conjecture": 3531,
     "uncertain": 26
   },
-  "papers_total": 25395,
+  "papers_total": 26747,
   "publication_policy_version": "hf-publication-v2",
-  "published_at_focus_range_end": "2026-07-02",
+  "published_at_focus_range_end": "2026-07-09",
   "published_at_focus_range_start": "2025-12-30",
   "published_at_outlier_paper_count": 144,
-  "published_at_range_end": "2026-07-02",
+  "published_at_range_end": "2026-07-09",
   "published_at_range_start": "2017-02-02",
   "repo_id": "davisrbr/openconjecture"
 }
